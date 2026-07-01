@@ -1,32 +1,28 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+exports.processClip = onCall(async (request) => {
+  // Grab the data sent from your React frontend
+  const { text, rule } = request.data;
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+  // Basic validation
+  if (!text) {
+    throw new HttpsError(
+      "invalid-argument",
+      "The function must be called with a 'text' argument.",
+    );
+  }
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+  logger.info(`Processing clip for rule: ${rule}`);
+
+  // --- LLM PLACEHOLDER ---
+  // This is exactly where we will put the code to talk to your chosen AI.
+  // For now, we will just send a mock response to prove the frontend and backend are talking.
+
+  const simulatedResponse = `[Backend Success! Rule applied: ${rule.toUpperCase()}]\n\nOriginal text started with: "${text.substring(0, 30)}..."`;
+
+  // Send the result back to the frontend
+  return {
+    result: simulatedResponse,
+  };
+});
