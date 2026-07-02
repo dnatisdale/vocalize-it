@@ -19,7 +19,7 @@ exports.processClip = onCall({ cors: true }, async (request) => {
 
   try {
     // We are using gemini-1.5-flash because it is incredibly fast for text tasks
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     // Build the specific prompt based on what the React frontend asked for
     let prompt = "";

@@ -9,34 +9,32 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [rule, setRule] = useState("summarize");
 
+  // We keep this to track if the button should say Play or Pause
+  const [isPlaying, setIsPlaying] = useState(false);
+
   // Grab text directly from the device clipboard
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
       setClipboardText(text);
       setProcessedText(""); // Reset output when new text is pasted
+      window.speechSynthesis.cancel(); // Stop any audio if they paste new text
+      setIsPlaying(false);
     } catch (err) {
       console.error("Failed to read clipboard contents: ", err);
       alert("Please allow clipboard permissions in your browser.");
     }
   };
 
-  // Placeholder for the Firebase Cloud Function
+  // Your Firebase Cloud Function call
   const handleProcess = async () => {
     if (!clipboardText) return;
     setIsProcessing(true);
 
     try {
-      // Initialize the Functions service
       const functions = getFunctions(app);
-
-      // Point to the specific function we just wrote
       const processClip = httpsCallable(functions, "processClip");
-
-      // Send the text and the rule to the backend
       const response = await processClip({ text: clipboardText, rule: rule });
-
-      // Update the UI with the backend's response
       setProcessedText(response.data.result);
     } catch (error) {
       console.error("Error calling backend:", error);
@@ -48,16 +46,35 @@ function App() {
     }
   };
 
-  // Built-in browser Text-to-Speech
-  const handleSpeak = () => {
+  // Updated Text-to-Speech with Play/Pause functionality
+  const handleSpeakToggle = () => {
     if (!processedText) return;
 
-    // Cancel any ongoing speech before starting a new one
-    window.speechSynthesis.cancel();
+    // 1. If it's currently speaking, pause it
+    if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+      window.speechSynthesis.pause();
+      setIsPlaying(false);
+      return;
+    }
 
+    // 2. If it is paused, resume it from where it left off
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      setIsPlaying(true);
+      return;
+    }
+
+    // 3. If it isn't playing at all, start fresh
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(processedText);
-    // You can eventually customize the voice, pitch, and speed here
+
+    // Tell the button to switch back to "Play" when the audio finishes
+    utterance.onend = () => {
+      setIsPlaying(false);
+    };
+
     window.speechSynthesis.speak(utterance);
+    setIsPlaying(true);
   };
 
   return (
@@ -81,7 +98,7 @@ function App() {
         📋 Paste from Clipboard
       </button>
 
-      {/* Input Area (Appears after pasting) */}
+      {/* Input Area */}
       {clipboardText && (
         <div
           style={{
@@ -141,7 +158,7 @@ function App() {
         </div>
       )}
 
-      {/* Output Area (Appears after processing) */}
+      {/* Output Area */}
       {processedText && (
         <div
           style={{
@@ -157,8 +174,9 @@ function App() {
           <p style={{ lineHeight: "1.6", color: "#2c3e50" }}>{processedText}</p>
 
           <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-            <button onClick={handleSpeak} style={btnStyleSecondary}>
-              🔊 Play Audio
+            {/* The updated Play/Pause Button */}
+            <button onClick={handleSpeakToggle} style={btnStyleSecondary}>
+              {isPlaying ? "⏸ Pause Audio" : "🔊 Play Audio"}
             </button>
             <button
               onClick={() => navigator.clipboard.writeText(processedText)}
@@ -213,6 +231,7 @@ const btnStyleSecondary = {
   backgroundColor: "#fff",
   color: "#34495e",
   fontWeight: "600",
+  minWidth: "140px", // Keeps the button from resizing aggressively
 };
 
 export default App;
