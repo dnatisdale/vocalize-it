@@ -1,11 +1,13 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// Initialize the Gemini client using the secure environment variable we just created
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 exports.processClip = onCall(async (request) => {
-  // Grab the data sent from your React frontend
   const { text, rule } = request.data;
 
-  // Basic validation
   if (!text) {
     throw new HttpsError(
       "invalid-argument",
@@ -15,14 +17,32 @@ exports.processClip = onCall(async (request) => {
 
   logger.info(`Processing clip for rule: ${rule}`);
 
-  // --- LLM PLACEHOLDER ---
-  // This is exactly where we will put the code to talk to your chosen AI.
-  // For now, we will just send a mock response to prove the frontend and backend are talking.
+  try {
+    // We are using gemini-1.5-flash because it is incredibly fast for text tasks
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const simulatedResponse = `[Backend Success! Rule applied: ${rule.toUpperCase()}]\n\nOriginal text started with: "${text.substring(0, 30)}..."`;
+    // Build the specific prompt based on what the React frontend asked for
+    let prompt = "";
+    if (rule === "summarize") {
+      prompt = `Please provide a concise, single-paragraph summary of the following text:\n\n${text}`;
+    } else if (rule === "categorize") {
+      prompt = `Please analyze the following text and assign it 3 to 5 relevant categories or tags. Output ONLY the tags, separated by commas:\n\n${text}`;
+    } else if (rule === "correct") {
+      prompt = `Please correct any grammar, spelling, or punctuation errors in the following text. ONLY return the corrected text, without any conversational filler or explanations:\n\n${text}`;
+    } else {
+      prompt = `Process the following text: ${text}`;
+    }
 
-  // Send the result back to the frontend
-  return {
-    result: simulatedResponse,
-  };
+    // Send the prompt to Gemini and wait for the response
+    const result = await model.generateContent(prompt);
+    const aiResponse = result.response.text();
+
+    // Send the AI's actual response back to your React frontend
+    return {
+      result: aiResponse,
+    };
+  } catch (error) {
+    logger.error("Gemini API Error:", error);
+    throw new HttpsError("internal", "Failed to process text with Gemini.");
+  }
 });
