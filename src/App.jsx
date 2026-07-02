@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "./firebase/firebase"; // Your config file
 import "./App.css";
@@ -12,13 +12,16 @@ function App() {
   // We keep this to track if the button should say Play or Pause
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // This "anchor" prevents Chrome from deleting the audio mid-sentence!
+  const utteranceRef = useRef(null);
+
   // Grab text directly from the device clipboard
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
       setClipboardText(text);
-      setProcessedText(""); // Reset output when new text is pasted
-      window.speechSynthesis.cancel(); // Stop any audio if they paste new text
+      setProcessedText("");
+      window.speechSynthesis.cancel();
       setIsPlaying(false);
     } catch (err) {
       console.error("Failed to read clipboard contents: ", err);
@@ -46,30 +49,38 @@ function App() {
     }
   };
 
-  // Updated Text-to-Speech with Play/Pause functionality
+  // The fixed Play/Pause logic
   const handleSpeakToggle = () => {
     if (!processedText) return;
 
-    // 1. If it's currently speaking, pause it
-    if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+    // 1. If our button says it's currently playing, force it to pause
+    if (isPlaying) {
       window.speechSynthesis.pause();
       setIsPlaying(false);
       return;
     }
 
-    // 2. If it is paused, resume it from where it left off
+    // 2. If it is already paused in the background, resume it
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
       setIsPlaying(true);
       return;
     }
 
-    // 3. If it isn't playing at all, start fresh
+    // 3. If it isn't playing or paused, start completely fresh
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(processedText);
 
-    // Tell the button to switch back to "Play" when the audio finishes
+    // Attach the audio to our anchor so Chrome doesn't forget it
+    utteranceRef.current = utterance;
+
+    // Tell the button to switch back to "Play" when the audio finishes naturally
     utterance.onend = () => {
+      setIsPlaying(false);
+    };
+
+    // If an error happens, reset the button so it doesn't get stuck
+    utterance.onerror = () => {
       setIsPlaying(false);
     };
 
@@ -174,7 +185,6 @@ function App() {
           <p style={{ lineHeight: "1.6", color: "#2c3e50" }}>{processedText}</p>
 
           <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-            {/* The updated Play/Pause Button */}
             <button onClick={handleSpeakToggle} style={btnStyleSecondary}>
               {isPlaying ? "⏸ Pause Audio" : "🔊 Play Audio"}
             </button>
@@ -231,7 +241,7 @@ const btnStyleSecondary = {
   backgroundColor: "#fff",
   color: "#34495e",
   fontWeight: "600",
-  minWidth: "140px", // Keeps the button from resizing aggressively
+  minWidth: "140px",
 };
 
 export default App;
