@@ -46,3 +46,4 @@ exports.processClip = onCall({ cors: true }, async (request) => {
     throw new HttpsError("internal", "Failed to process text with Gemini.");
   }
 });
+// forcing deploy to update API key
