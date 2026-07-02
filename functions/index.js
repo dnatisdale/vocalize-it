@@ -5,7 +5,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Initialize the Gemini client using the secure environment variable we just created
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-exports.processClip = onCall(async (request) => {
+exports.processClip = onCall({ cors: true }, async (request) => {
   const { text, rule } = request.data;
 
   if (!text) {
