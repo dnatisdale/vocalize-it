@@ -1238,62 +1238,71 @@ function App() {
                               key={idx}
                               className="tuner-row"
                               style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                gap: "12px",
-                                padding: "10px 12px",
-                                background: isBlocked ? "rgba(239, 68, 68, 0.03)" : "var(--bg-app)",
-                                border: isBlocked ? "1px solid rgba(239, 68, 68, 0.15)" : "1px solid var(--border-color)",
+                                position: "relative",
+                                padding: "10px 44px 10px 12px",
+                                background: isBlocked ? "rgba(239, 68, 68, 0.04)" : "var(--bg-app)",
+                                border: isBlocked ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid var(--border-color)",
                                 borderRadius: "10px",
-                                fontSize: "0.95rem",
+                                fontSize: "0.9rem",
                                 transition: "all 0.2s ease"
                               }}
                             >
                               <span style={{
-                                flex: 1,
+                                display: "block",
                                 whiteSpace: "pre-wrap",
                                 textDecoration: isBlocked ? "line-through" : "none",
-                                opacity: isBlocked ? 0.45 : 1,
-                                color: isBlocked ? "var(--text-secondary)" : "var(--text-primary)"
+                                opacity: isBlocked ? 0.4 : 1,
+                                color: isBlocked ? "var(--text-secondary)" : "var(--text-primary)",
+                                lineHeight: 1.5
                               }}>
                                 {trimmedPara}
                               </span>
+
+                              {/* Icon button — top-right corner, inside card */}
                               {activeTemplate ? (
-                                isBlocked ? (
-                                  <button
-                                    onClick={() => {
-                                      if (isLocked) {
-                                        alert("This template is locked. Unlock it in the 'Custom Newsletter Filters' section below to make changes.");
-                                        return;
-                                      }
+                                <button
+                                  onClick={() => {
+                                    if (isLocked) {
+                                      alert("This template is locked. Unlock it in the Filters manager below to make changes.");
+                                      return;
+                                    }
+                                    if (isBlocked) {
                                       handleRemoveBlockedPhrase(activeTemplate.id, matchingPhrase);
-                                    }}
-                                    className="btn-secondary"
-                                    style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", opacity: isLocked ? 0.45 : 1, display: "flex", alignItems: "center", gap: "4px", border: "1px solid var(--color-success)", color: "var(--color-success)", background: "rgba(16, 185, 129, 0.05)" }}
-                                    title={isLocked ? "Unlock the template below to re-include this section" : "Include this section back in the reading stream (+)"}
-                                  >
-                                    + Include
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      if (isLocked) {
-                                        alert("This template is locked. Unlock it in the 'Custom Newsletter Filters' section below to make changes.");
-                                        return;
-                                      }
+                                    } else {
                                       const filterPhrase = trimmedPara.length > 70 ? trimmedPara.substring(0, 70) : trimmedPara;
                                       handleAddBlockedPhrase(activeTemplate.id, filterPhrase);
-                                    }}
-                                    className="btn-danger-outline"
-                                    style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", opacity: isLocked ? 0.45 : 1, display: "flex", alignItems: "center", gap: "4px" }}
-                                    title={isLocked ? "Unlock the template below to exclude this section" : "Exclude this section from being read (X)"}
-                                  >
-                                    X Exclude
-                                  </button>
-                                )
+                                    }
+                                  }}
+                                  title={isLocked ? "Unlock template to make changes" : isBlocked ? "Restore: include this section in the reading" : "Exclude this section from reading"}
+                                  style={{
+                                    position: "absolute",
+                                    top: "8px",
+                                    right: "8px",
+                                    width: "28px",
+                                    height: "28px",
+                                    borderRadius: "6px",
+                                    border: `1.5px solid ${isBlocked ? "var(--color-success)" : "var(--color-danger)"}`,
+                                    background: isBlocked ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
+                                    color: isBlocked ? "var(--color-success)" : "var(--color-danger)",
+                                    cursor: isLocked ? "not-allowed" : "pointer",
+                                    opacity: isLocked ? 0.4 : 1,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexShrink: 0,
+                                    transition: "all 0.2s ease",
+                                    padding: 0
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                    {isBlocked
+                                      ? <path d="M12 5v14M5 12h14"/>   /* + restore */
+                                      : <path d="M18 6L6 18M6 6l12 12"/>  /* × exclude */
+                                    }
+                                  </svg>
+                                </button>
                               ) : (
-                                <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)", fontStyle: "italic", flexShrink: 0 }}>No template</span>
+                                <span style={{ position: "absolute", top: "8px", right: "8px", fontSize: "0.65rem", color: "var(--text-secondary)", fontStyle: "italic", whiteSpace: "nowrap" }}>no template</span>
                               )}
                             </div>
                           );
