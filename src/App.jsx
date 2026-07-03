@@ -226,13 +226,35 @@ function App() {
 
   // Template CRUD actions
   const handleCreateTemplate = (name, triggerKeyword) => {
+    const newId = "tpl_" + Date.now().toString();
     const newTpl = {
-      id: "tpl_" + Date.now().toString(),
+      id: newId,
       name: name.trim() || "Unnamed Template",
       triggerKeyword: triggerKeyword.trim(),
       blockedPhrases: []
     };
     setTemplates(prev => [...prev, newTpl]);
+    
+    // Automatically select the newly created template
+    setSelectedTemplateId(newId);
+
+    // If we have active text, immediately switch to Clean-It-Up mode, open the tuner, and scroll to it
+    if (clipboardText) {
+      setRule("distill");
+      setIsTuningMode(true);
+      
+      const clean = distillContent(clipboardText, { customBlockedPhrases: [] });
+      setProcessedText(clean);
+      setDistillerStats(getDistillerStats(clipboardText, clean));
+
+      // Smooth scroll back up to the tuner panel inside the output card
+      setTimeout(() => {
+        const resultCard = document.querySelector(".result-card");
+        if (resultCard) {
+          resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    }
   };
 
   const handleDeleteTemplate = (id) => {
