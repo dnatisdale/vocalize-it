@@ -1570,13 +1570,13 @@ function App() {
                               )}
 
                               {/* Inline form to add blocked phrase */}
-                              <div style={{ display: "flex", gap: "8px" }}>
+                              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                 <input 
                                   type="text" 
                                   id={`add-phrase-${tpl.id}`}
                                   placeholder="Add text or phrase to block section..." 
                                   className="modern-select" 
-                                  style={{ padding: "6px 12px", fontSize: "0.8rem", background: "var(--bg-input)", flex: 1, minWidth: 0 }}
+                                  style={{ padding: "8px 12px", fontSize: "0.85rem", background: "var(--bg-input)", flex: 1, minWidth: 0, width: "auto" }}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       const input = document.getElementById(`add-phrase-${tpl.id}`);
@@ -1595,8 +1595,8 @@ function App() {
                                       input.value = "";
                                     }
                                   }}
-                                  className="btn btn-secondary" 
-                                  style={{ padding: "6px 14px", fontSize: "0.8rem", flexShrink: 0, whiteSpace: "nowrap" }}
+                                  className="btn-secondary" 
+                                  style={{ padding: "8px 14px", fontSize: "0.85rem", flexShrink: 0, whiteSpace: "nowrap", borderRadius: "10px", cursor: "pointer", border: "1px solid var(--border-color)", background: "var(--bg-input)", color: "var(--text-primary)" }}
                                 >
                                   Add
                                 </button>
