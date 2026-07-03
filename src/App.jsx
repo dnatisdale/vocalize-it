@@ -881,7 +881,15 @@ function App() {
       {/* SW Update Reload Prompt Toast */}
       {needRefresh && (
         <div className="sw-toast">
-          <div className="sw-toast-message">
+          <button
+            className="sw-toast-close-btn"
+            onClick={() => setNeedRefresh(false)}
+            aria-label="Close update notification"
+            title="Dismiss update"
+          >
+            <ClearIcon />
+          </button>
+          <div className="sw-toast-message" style={{ paddingRight: "24px" }}>
             A new version of Vocalize.it is available! Refresh to update.
           </div>
           <div className="sw-toast-actions">
