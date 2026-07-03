@@ -571,7 +571,10 @@ function App() {
   // Enhanced Speech Settings
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
-  const [rate, setRate] = useState(1);
+  const [rate, setRate] = useState(() => {
+    const saved = parseFloat(localStorage.getItem("vocalize_speech_rate"));
+    return isNaN(saved) ? 0.5 : saved;
+  });
 
   // Initialize history directly from localStorage
   const [history, setHistory] = useState(() => {
@@ -863,9 +866,10 @@ function App() {
     }
   };
 
-  // Change rate and update speech playback immediately if active
+  // Change rate, persist to localStorage, and update speech playback immediately if active
   const handleRateChange = (newRate) => {
     setRate(newRate);
+    localStorage.setItem("vocalize_speech_rate", newRate);
     const textToSpeak = processedText || clipboardText;
     if (isPlaying && textToSpeak) {
       window.speechSynthesis.cancel();
