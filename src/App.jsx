@@ -1576,7 +1576,7 @@ function App() {
                                   id={`add-phrase-${tpl.id}`}
                                   placeholder="Add text or phrase to block section..." 
                                   className="modern-select" 
-                                  style={{ padding: "6px 12px", fontSize: "0.8rem", background: "var(--bg-input)", flex: 1 }}
+                                  style={{ padding: "6px 12px", fontSize: "0.8rem", background: "var(--bg-input)", flex: 1, minWidth: 0 }}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       const input = document.getElementById(`add-phrase-${tpl.id}`);
@@ -1596,7 +1596,7 @@ function App() {
                                     }
                                   }}
                                   className="btn btn-secondary" 
-                                  style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                  style={{ padding: "6px 14px", fontSize: "0.8rem", flexShrink: 0, whiteSpace: "nowrap" }}
                                 >
                                   Add
                                 </button>
