@@ -206,6 +206,24 @@ function App() {
     return "none";
   });
   const [showScrollTop, setShowScrollTop] = useState(false); // Scroll-to-top floating button visibility
+  
+  // Layout reordering states for major panels
+  const [layoutOrder, setLayoutOrder] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("vocalize_layout_order");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === 3) return parsed;
+        } catch (err) {
+          console.warn("Failed to parse layout order:", err);
+        }
+      }
+    }
+    return ["distillery", "player", "filters"];
+  });
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [draggableSection, setDraggableSection] = useState(null);
 
   // Scroll listener to show/hide scroll-to-top button
   useEffect(() => {
@@ -222,6 +240,80 @@ function App() {
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Drag and drop sorting handlers for major cards/sections
+  const handleLayoutDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleLayoutDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    
+    const updated = [...layoutOrder];
+    const item = updated[draggedIndex];
+    updated.splice(draggedIndex, 1);
+    updated.splice(index, 0, item);
+    setLayoutOrder(updated);
+    setDraggedIndex(index);
+  };
+
+  const handleLayoutDragEnd = () => {
+    setDraggedIndex(null);
+    setDraggableSection(null);
+    localStorage.setItem("vocalize_layout_order", JSON.stringify(layoutOrder));
+  };
+
+  const handleMoveSection = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= layoutOrder.length) return;
+    const updated = [...layoutOrder];
+    const temp = updated[index];
+    updated[index] = updated[newIndex];
+    updated[newIndex] = temp;
+    setLayoutOrder(updated);
+    localStorage.setItem("vocalize_layout_order", JSON.stringify(updated));
+  };
+
+  const renderLayoutGrip = (sectionId) => {
+    const index = layoutOrder.indexOf(sectionId);
+    if (index === -1) return null;
+    return (
+      <div 
+        className="layout-grip-controls" 
+        style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "12px" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => handleMoveSection(index, -1)}
+          disabled={index === 0}
+          className="btn-layout-arrow"
+          style={{ background: "transparent", border: "none", cursor: index === 0 ? "not-allowed" : "pointer", opacity: index === 0 ? 0.3 : 0.7, padding: "2px 4px", color: "var(--text-primary)", fontSize: "0.8rem", display: "inline-flex", alignItems: "center" }}
+          title="Move section up"
+        >
+          ▲
+        </button>
+        <span 
+          style={{ cursor: "grab", opacity: 0.7, display: "inline-flex", alignItems: "center" }}
+          title="Drag and hold to rearrange"
+          onMouseEnter={() => setDraggableSection(sectionId)}
+          onMouseLeave={() => setDraggableSection(null)}
+        >
+          <GripIcon />
+        </span>
+        <button
+          onClick={() => handleMoveSection(index, 1)}
+          disabled={index === layoutOrder.length - 1}
+          className="btn-layout-arrow"
+          style={{ background: "transparent", border: "none", cursor: index === layoutOrder.length - 1 ? "not-allowed" : "pointer", opacity: index === layoutOrder.length - 1 ? 0.3 : 0.7, padding: "2px 4px", color: "var(--text-primary)", fontSize: "0.8rem", display: "inline-flex", alignItems: "center" }}
+          title="Move section down"
+        >
+          ▼
+        </button>
+      </div>
+    );
   };
 
   // Save templates to localStorage
@@ -1065,386 +1157,444 @@ function App() {
           </div>
         )}
 
-        {/* Output & Tuning Sections Panel (Distillery) */}
-        {clipboardText && (rule === "distill" || processedText) && (
-          <div className="result-card" style={{ marginTop: "20px", animation: "fadeIn 0.3s" }}>
-            <div className="result-header">
-              <span>{rule === "distill" ? "Distillery Sections" : "AI Output Result"}</span>
-              <span className="result-badge">{getRuleLabel(rule)}</span>
-            </div>
-
-            {/* Show distiller stats when Clean-It-Up was used */}
-            {rule === "distill" && distillerStats && (
-              <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "12px", fontStyle: "italic" }}>
-                {distillerStats}
-              </p>
-            )}
-            
-            {rule === "distill" && activeTemplate ? (
-              <div className="boilerplate-tuner-panel" style={{ animation: "fadeIn 0.2s" }}>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
-                  <strong>Distillery</strong>: Below are all the newsletter sections. Click <strong>X Exclude</strong> to cross out sections that shouldn't be read, and <strong>+ Include</strong> to restore them.
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {(() => {
-                    const baseClean = distillContent(clipboardText);
-                    return baseClean.split("\n\n").map((para, idx) => {
-                      const trimmedPara = para.trim();
-                      if (!trimmedPara) return null;
-                      
-                      const lowerPara = trimmedPara.toLowerCase();
-                      const matchingPhrase = activeTemplate.blockedPhrases.find(phrase => 
-                        phrase && lowerPara.includes(phrase.toLowerCase())
-                      );
-                      const isBlocked = !!matchingPhrase;
-                      const isLocked = activeTemplate.isLocked;
-                      
-                      return (
-                        <div 
-                          key={idx} 
-                          className="tuner-row" 
-                          style={{ 
-                            display: "flex", 
-                            justifyContent: "space-between", 
-                            alignItems: "flex-start", 
-                            gap: "12px",
-                            padding: "10px 12px",
-                            background: isBlocked ? "rgba(239, 68, 68, 0.03)" : "var(--bg-app)",
-                            border: isBlocked ? "1px solid rgba(239, 68, 68, 0.15)" : "1px solid var(--border-color)",
-                            borderRadius: "10px",
-                            fontSize: "0.95rem",
-                            transition: "all 0.2s ease"
-                          }}
-                        >
-                          <span style={{ 
-                            flex: 1, 
-                            whiteSpace: "pre-wrap", 
-                            textDecoration: isBlocked ? "line-through" : "none",
-                            opacity: isBlocked ? 0.45 : 1,
-                            color: isBlocked ? "var(--text-secondary)" : "var(--text-primary)"
-                          }}>
-                            {trimmedPara}
-                          </span>
-                          {isBlocked ? (
-                            <button
-                              onClick={() => {
-                                if (isLocked) {
-                                  alert("This template is locked. Please unlock it under 'Custom Newsletter Filters' below to make changes.");
-                                  return;
-                                }
-                                handleRemoveBlockedPhrase(activeTemplate.id, matchingPhrase);
-                              }}
-                              className="btn-secondary"
-                              style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "4px", border: "1px solid var(--color-success)", color: "var(--color-success)", background: "rgba(16, 185, 129, 0.05)" }}
-                              title={isLocked ? "Template is locked" : "Include this section back in the reading stream (+)"}
-                            >
-                              {isLocked ? "🔒 Locked" : "+ Include"}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                if (isLocked) {
-                                  alert("This template is locked. Please unlock it under 'Custom Newsletter Filters' below to make changes.");
-                                  return;
-                                }
-                                const filterPhrase = trimmedPara.length > 70 
-                                  ? trimmedPara.substring(0, 70) 
-                                  : trimmedPara;
-                                handleAddBlockedPhrase(activeTemplate.id, filterPhrase);
-                              }}
-                              className="btn-danger-outline"
-                              style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "4px" }}
-                              title={isLocked ? "Template is locked" : "Exclude this section from being read (X)"}
-                            >
-                              {isLocked ? "🔒 Locked" : "X Exclude"}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            ) : (
-              <p className="result-content">{processedText}</p>
-            )}
-          </div>
-        )}
-
-        {/* Audio Player Panel — Always visible if clipboardText exists */}
-        {clipboardText && (
-          <div className="result-card tts-player-card" style={{ marginTop: "20px", animation: "fadeIn 0.3s" }}>
-            <div className="result-header">
-              <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <SpeakerIcon /> <span>Text-to-Speech Player</span>
-              </span>
-              {rule === "distill" && activeTemplate && (
-                <span className="template-badge-applied">
-                  Active Filter: {activeTemplate.name}
-                </span>
-              )}
-            </div>
-
-            {/* TTS Settings & Controls */}
-            <div className="tts-controls-panel" style={{ marginTop: 0 }}>
-              <div className="tts-controls-grid">
-                {/* Voice Selection */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label className="slider-label" style={{ fontSize: "0.8rem" }}>Select Voice</label>
-                  <div className="select-wrapper" style={{ minWidth: "100%" }}>
-                    <select
-                      value={selectedVoice}
-                      onChange={(e) => handleVoiceChange(e.target.value)}
-                      className="modern-select"
-                      style={{ padding: "8px 12px", fontSize: "0.85rem" }}
-                    >
-                      {voices.length === 0 ? (
-                        <option>Default Voice</option>
-                      ) : (
-                        voices.map((v) => (
-                          <option key={v.name} value={v.name}>
-                            {v.name} ({v.lang})
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Speed adjustment slider */}
-                <div className="speed-slider-group">
-                  <div className="slider-label">
-                    <span>Speed / Rate</span>
-                    <span>{rate}x</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.0"
-                    step="0.1"
-                    value={rate}
-                    onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-                    className="modern-slider"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Play/Pause controls actions */}
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "16px" }}>
-              <button onClick={handleSpeakToggle} className="btn btn-accent" style={{ flex: 1, minWidth: "140px" }}>
-                {isPlaying ? (isPaused ? <PlayIcon /> : <PauseIcon />) : <PlayIcon />}
-                <span>{isPlaying ? (isPaused ? " Resume Audio" : " Pause Audio") : " Play Audio"}</span>
-              </button>
-              {isPlaying && (
-                <button onClick={stopSpeech} className="btn btn-secondary">
-                  <StopIcon /> Stop
-                </button>
-              )}
-              {processedText && (
-                <button onClick={handleCopyResult} className="btn btn-secondary" style={{ flex: 1, minWidth: "120px" }}>
-                  <CopyIcon /> Copy Clean Text
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Custom Newsletter Filters Section */}
-        <section className="templates-section" style={{ marginTop: "32px", borderTop: "1px solid var(--border-color)", paddingTop: "24px", textAlign: "left" }}>
-          <div className="history-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <SparklesIcon /> Custom Newsletter Filters ({templates.length})
-            </span>
-          </div>
-
-          <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
-            Create custom templates for newsletters you paste regularly to exclude specific boilerplate and repeating sections from being read.
-          </p>
-
-          {/* Form to create a new template */}
-          <div className="new-template-form" style={{ display: "flex", gap: "10px", flexWrap: "wrap", background: "var(--bg-app)", padding: "16px", borderRadius: "12px", border: "1px solid var(--border-color)", marginBottom: "20px" }}>
-            <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Template Name</label>
-              <input 
-                type="text" 
-                id="new-tpl-name" 
-                placeholder="e.g. Morning Brew" 
-                className="modern-select" 
-                style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
-              />
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-end" }}>
-              <button 
-                onClick={() => {
-                  const nameInput = document.getElementById("new-tpl-name");
-                  if (nameInput) {
-                    const name = nameInput.value.trim();
-                    if (!name) {
-                      alert("Please enter a template name.");
-                      return;
-                    }
-                    handleCreateTemplate(name);
-                    nameInput.value = "";
-                  }
-                }} 
-                className="btn btn-accent" 
-                style={{ padding: "10px 16px", fontSize: "0.85rem", height: "40px" }}
+        {/* Rearrangeable Sections Container */}
+        {layoutOrder.map((sectionId, index) => {
+          if (sectionId === "distillery") {
+            if (!clipboardText || (rule !== "distill" && !processedText)) return null;
+            return (
+              <div 
+                key="distillery"
+                draggable={draggableSection === "distillery"}
+                onDragStart={(e) => handleLayoutDragStart(e, index)}
+                onDragOver={(e) => handleLayoutDragOver(e, index)}
+                onDragEnd={handleLayoutDragEnd}
+                className="result-card" 
+                style={{ 
+                  marginTop: "20px", 
+                  animation: "fadeIn 0.3s",
+                  opacity: draggedIndex === index ? 0.4 : 1,
+                  transition: "opacity 0.2s ease, transform 0.2s ease"
+                }}
               >
-                + Add Template
-              </button>
-            </div>
-          </div>
+                <div className="result-header">
+                  <span>{rule === "distill" ? "Distillery Sections" : "AI Output Result"}</span>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    {renderLayoutGrip("distillery")}
+                    <span className="result-badge">{getRuleLabel(rule)}</span>
+                  </div>
+                </div>
 
-          {/* List of existing templates */}
-          {templates.length === 0 ? (
-            <div className="history-empty" style={{ padding: "24px", marginBottom: "20px" }}>
-              No custom newsletter templates created yet. Set one up above!
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
-              {templates.map(tpl => {
-                const isExpanded = selectedTemplateId === tpl.id; // Expand the active/selected template, or let users toggle it
-                return (
-                  <div 
-                    key={tpl.id} 
-                    className="template-card" 
-                    style={{ 
-                      background: "var(--history-item-bg)", 
-                      border: "1px solid var(--border-color)", 
-                      borderRadius: "12px", 
-                      padding: "16px" 
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                      <div>
-                        <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>{tpl.name}</h4>
-                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
-                          Excluded Sections: {tpl.blockedPhrases.length} 
-                          {tpl.isLocked ? (
-                            <span style={{ color: "var(--color-danger)", display: "inline-flex", alignItems: "center", fontSize: "0.75rem", fontWeight: 600 }}>
-                              (🔒 Locked)
-                            </span>
+                {/* Show distiller stats when Clean-It-Up was used */}
+                {rule === "distill" && distillerStats && (
+                  <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "12px", fontStyle: "italic" }}>
+                    {distillerStats}
+                  </p>
+                )}
+                
+                {rule === "distill" && activeTemplate ? (
+                  <div className="boilerplate-tuner-panel" style={{ animation: "fadeIn 0.2s" }}>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
+                      <strong>Distillery</strong>: Below are all the newsletter sections. Click <strong>X Exclude</strong> to cross out sections that shouldn't be read, and <strong>+ Include</strong> to restore them.
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      {(() => {
+                        const baseClean = distillContent(clipboardText);
+                        return baseClean.split("\n\n").map((para, idx) => {
+                          const trimmedPara = para.trim();
+                          if (!trimmedPara) return null;
+                          
+                          const lowerPara = trimmedPara.toLowerCase();
+                          const matchingPhrase = activeTemplate.blockedPhrases.find(phrase => 
+                            phrase && lowerPara.includes(phrase.toLowerCase())
+                          );
+                          const isBlocked = !!matchingPhrase;
+                          const isLocked = activeTemplate.isLocked;
+                          
+                          return (
+                            <div 
+                              key={idx} 
+                              className="tuner-row" 
+                              style={{ 
+                                display: "flex", 
+                                justifyContent: "space-between", 
+                                alignItems: "flex-start", 
+                                gap: "12px",
+                                padding: "10px 12px",
+                                background: isBlocked ? "rgba(239, 68, 68, 0.03)" : "var(--bg-app)",
+                                border: isBlocked ? "1px solid rgba(239, 68, 68, 0.15)" : "1px solid var(--border-color)",
+                                borderRadius: "10px",
+                                fontSize: "0.95rem",
+                                transition: "all 0.2s ease"
+                              }}
+                            >
+                              <span style={{ 
+                                flex: 1, 
+                                whiteSpace: "pre-wrap", 
+                                textDecoration: isBlocked ? "line-through" : "none",
+                                opacity: isBlocked ? 0.45 : 1,
+                                color: isBlocked ? "var(--text-secondary)" : "var(--text-primary)"
+                              }}>
+                                {trimmedPara}
+                              </span>
+                              {isBlocked ? (
+                                <button
+                                  onClick={() => {
+                                    if (isLocked) {
+                                      alert("This template is locked. Please unlock it under 'Custom Newsletter Filters' below to make changes.");
+                                      return;
+                                    }
+                                    handleRemoveBlockedPhrase(activeTemplate.id, matchingPhrase);
+                                  }}
+                                  className="btn-secondary"
+                                  style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "4px", border: "1px solid var(--color-success)", color: "var(--color-success)", background: "rgba(16, 185, 129, 0.05)" }}
+                                  title={isLocked ? "Template is locked" : "Include this section back in the reading stream (+)"}
+                                >
+                                  {isLocked ? "🔒 Locked" : "+ Include"}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    if (isLocked) {
+                                      alert("This template is locked. Please unlock it under 'Custom Newsletter Filters' below to make changes.");
+                                      return;
+                                    }
+                                    const filterPhrase = trimmedPara.length > 70 
+                                      ? trimmedPara.substring(0, 70) 
+                                      : trimmedPara;
+                                    handleAddBlockedPhrase(activeTemplate.id, filterPhrase);
+                                  }}
+                                  className="btn-danger-outline"
+                                  style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                                  title={isLocked ? "Template is locked" : "Exclude this section from being read (X)"}
+                                >
+                                  {isLocked ? "🔒 Locked" : "X Exclude"}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="result-content">{processedText}</p>
+                )}
+              </div>
+            );
+          }
+
+          if (sectionId === "player") {
+            if (!clipboardText) return null;
+            return (
+              <div 
+                key="player"
+                draggable={draggableSection === "player"}
+                onDragStart={(e) => handleLayoutDragStart(e, index)}
+                onDragOver={(e) => handleLayoutDragOver(e, index)}
+                onDragEnd={handleLayoutDragEnd}
+                className="result-card tts-player-card" 
+                style={{ 
+                  marginTop: "20px", 
+                  animation: "fadeIn 0.3s",
+                  opacity: draggedIndex === index ? 0.4 : 1,
+                  transition: "opacity 0.2s ease, transform 0.2s ease"
+                }}
+              >
+                <div className="result-header">
+                  <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <SpeakerIcon /> <span>Text-to-Speech Player</span>
+                  </span>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    {renderLayoutGrip("player")}
+                    {rule === "distill" && activeTemplate && (
+                      <span className="template-badge-applied">
+                        Active Filter: {activeTemplate.name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* TTS Settings & Controls */}
+                <div className="tts-controls-panel" style={{ marginTop: 0 }}>
+                  <div className="tts-controls-grid">
+                    {/* Voice Selection */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <label className="slider-label" style={{ fontSize: "0.8rem" }}>Select Voice</label>
+                      <div className="select-wrapper" style={{ minWidth: "100%" }}>
+                        <select
+                          value={selectedVoice}
+                          onChange={(e) => handleVoiceChange(e.target.value)}
+                          className="modern-select"
+                          style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                        >
+                          {voices.length === 0 ? (
+                            <option>Default Voice</option>
                           ) : (
-                            <span style={{ color: "var(--color-success)", display: "inline-flex", alignItems: "center", fontSize: "0.75rem", fontWeight: 600 }}>
-                              (🔓 Unlocked)
-                            </span>
+                            voices.map((v) => (
+                              <option key={v.name} value={v.name}>
+                                {v.name} ({v.lang})
+                              </option>
+                            ))
                           )}
-                        </p>
-                      </div>
-                      <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                        <button
-                          onClick={() => setSelectedTemplateId(selectedTemplateId === tpl.id ? "none" : tpl.id)}
-                          className="btn-secondary"
-                          style={{ padding: "6px 12px", fontSize: "0.8rem", border: "none", cursor: "pointer" }}
-                        >
-                          {isExpanded ? "Hide Details" : `Manage Sections (${tpl.blockedPhrases.length})`}
-                        </button>
-                        <button
-                          onClick={() => handleToggleLockTemplate(tpl.id)}
-                          className="btn-secondary"
-                          style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
-                          title={tpl.isLocked ? "Unlock template to allow editing" : "Lock template to prevent editing"}
-                        >
-                          {tpl.isLocked ? <><UnlockIcon />Unlock</> : <><LockIcon />Lock</>}
-                        </button>
-                        <button
-                          onClick={() => handleRenameTemplate(tpl.id, tpl.name)}
-                          className="btn-secondary"
-                          style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
-                          title="Rename Template"
-                        >
-                          <EditIcon />Rename
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteTemplate(tpl.id)} 
-                          className="btn-danger-outline"
-                          style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
-                        >
-                          <TrashIcon /> Delete
-                        </button>
+                        </select>
                       </div>
                     </div>
 
-                    {/* Expanded details: blocked phrases list */}
-                    {isExpanded && (
-                      <div style={{ marginTop: "16px", borderTop: "1px solid var(--border-color)", paddingTop: "14px", animation: "fadeIn 0.2s" }}>
-                        <h5 style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
-                          Excluded Sections ({tpl.blockedPhrases.length})
-                        </h5>
-                        
-                        {tpl.blockedPhrases.length === 0 ? (
-                          <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontStyle: "italic", marginBottom: "12px" }}>
-                            No sections excluded yet. Use the Distillery above to exclude lines, or add them manually below.
-                          </p>
-                        ) : (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
-                            {tpl.blockedPhrases.map((phrase, pIdx) => (
-                              <span 
-                                key={pIdx} 
-                                style={{ 
-                                  background: "var(--bg-app)", 
-                                  border: "1px solid var(--border-color)", 
-                                  borderRadius: "6px", 
-                                  padding: "4px 8px", 
-                                  fontSize: "0.75rem", 
-                                  display: "inline-flex", 
-                                  alignItems: "center", 
-                                  gap: "6px" 
-                                }}
-                              >
-                                <span>{phrase}</span>
-                                <button 
-                                  onClick={() => handleRemoveBlockedPhrase(tpl.id, phrase)}
-                                  style={{ background: "transparent", border: "none", color: "var(--color-danger)", cursor: "pointer", display: "inline-flex", alignItems: "center" }}
-                                >
-                                  <ClearIcon />
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Inline form to add blocked phrase */}
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <input 
-                            type="text" 
-                            id={`add-phrase-${tpl.id}`}
-                            placeholder="Add text or phrase to block section..." 
-                            className="modern-select" 
-                            style={{ padding: "6px 12px", fontSize: "0.8rem", background: "var(--bg-input)", flex: 1 }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                const input = document.getElementById(`add-phrase-${tpl.id}`);
-                                if (input && input.value.trim()) {
-                                  handleAddBlockedPhrase(tpl.id, input.value.trim());
-                                  input.value = "";
-                                }
-                              }
-                            }}
-                          />
-                          <button 
-                            onClick={() => {
-                              const input = document.getElementById(`add-phrase-${tpl.id}`);
-                              if (input && input.value.trim()) {
-                                handleAddBlockedPhrase(tpl.id, input.value.trim());
-                                input.value = "";
-                              }
-                            }}
-                            className="btn btn-secondary" 
-                            style={{ padding: "6px 12px", fontSize: "0.8rem" }}
-                          >
-                            Add
-                          </button>
-                        </div>
+                    {/* Speed adjustment slider */}
+                    <div className="speed-slider-group">
+                      <div className="slider-label">
+                        <span>Speed / Rate</span>
+                        <span>{rate}x</span>
                       </div>
-                    )}
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.0"
+                        step="0.1"
+                        value={rate}
+                        onChange={(e) => handleRateChange(parseFloat(e.target.value))}
+                        className="modern-slider"
+                      />
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                </div>
+
+                {/* Play/Pause controls actions */}
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "16px" }}>
+                  <button onClick={handleSpeakToggle} className="btn btn-accent" style={{ flex: 1, minWidth: "140px" }}>
+                    {isPlaying ? (isPaused ? <PlayIcon /> : <PauseIcon />) : <PlayIcon />}
+                    <span>{isPlaying ? (isPaused ? " Resume Audio" : " Pause Audio") : " Play Audio"}</span>
+                  </button>
+                  {isPlaying && (
+                    <button onClick={stopSpeech} className="btn btn-secondary">
+                      <StopIcon /> Stop
+                    </button>
+                  )}
+                  {processedText && (
+                    <button onClick={handleCopyResult} className="btn btn-secondary" style={{ flex: 1, minWidth: "120px" }}>
+                      <CopyIcon /> Copy Clean Text
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          if (sectionId === "filters") {
+            return (
+              <div 
+                key="filters"
+                draggable={draggableSection === "filters"}
+                onDragStart={(e) => handleLayoutDragStart(e, index)}
+                onDragOver={(e) => handleLayoutDragOver(e, index)}
+                onDragEnd={handleLayoutDragEnd}
+                className="result-card templates-section" 
+                style={{ 
+                  marginTop: "20px", 
+                  textAlign: "left",
+                  opacity: draggedIndex === index ? 0.4 : 1,
+                  transition: "opacity 0.2s ease, transform 0.2s ease"
+                }}
+              >
+                <div className="result-header" style={{ marginBottom: "16px" }}>
+                  <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <SparklesIcon /> Custom Newsletter Filters ({templates.length})
+                  </span>
+                  {renderLayoutGrip("filters")}
+                </div>
+
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
+                  Create custom templates for newsletters you paste regularly to exclude specific boilerplate and repeating sections from being read.
+                </p>
+
+                {/* Form to create a new template */}
+                <div className="new-template-form" style={{ display: "flex", gap: "10px", flexWrap: "wrap", background: "var(--bg-app)", padding: "16px", borderRadius: "12px", border: "1px solid var(--border-color)", marginBottom: "20px" }}>
+                  <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Template Name</label>
+                    <input 
+                      type="text" 
+                      id="new-tpl-name" 
+                      placeholder="e.g. Morning Brew" 
+                      className="modern-select" 
+                      style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
+                    />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-end" }}>
+                    <button 
+                      onClick={() => {
+                        const nameInput = document.getElementById("new-tpl-name");
+                        if (nameInput) {
+                          const name = nameInput.value.trim();
+                          if (!name) {
+                            alert("Please enter a template name.");
+                            return;
+                          }
+                          handleCreateTemplate(name);
+                          nameInput.value = "";
+                        }
+                      }} 
+                      className="btn btn-accent" 
+                      style={{ padding: "10px 16px", fontSize: "0.85rem", height: "40px" }}
+                    >
+                      + Add Template
+                    </button>
+                  </div>
+                </div>
+
+                {/* List of existing templates */}
+                {templates.length === 0 ? (
+                  <div className="history-empty" style={{ padding: "24px", marginBottom: "20px" }}>
+                    No custom newsletter templates created yet. Set one up above!
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
+                    {templates.map(tpl => {
+                      const isExpanded = selectedTemplateId === tpl.id;
+                      return (
+                        <div 
+                          key={tpl.id} 
+                          className="template-card" 
+                          style={{ 
+                            background: "var(--history-item-bg)", 
+                            border: "1px solid var(--border-color)", 
+                            borderRadius: "12px", 
+                            padding: "16px" 
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                            <div>
+                              <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>{tpl.name}</h4>
+                              <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
+                                Excluded Sections: {tpl.blockedPhrases.length} 
+                                {tpl.isLocked ? (
+                                  <span style={{ color: "var(--color-danger)", display: "inline-flex", alignItems: "center", fontSize: "0.75rem", fontWeight: 600 }}>
+                                    (🔒 Locked)
+                                  </span>
+                                ) : (
+                                  <span style={{ color: "var(--color-success)", display: "inline-flex", alignItems: "center", fontSize: "0.75rem", fontWeight: 600 }}>
+                                    (🔓 Unlocked)
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                              <button
+                                onClick={() => setSelectedTemplateId(selectedTemplateId === tpl.id ? "none" : tpl.id)}
+                                className="btn-secondary"
+                                style={{ padding: "6px 12px", fontSize: "0.8rem", border: "none", cursor: "pointer" }}
+                              >
+                                {isExpanded ? "Hide Details" : `Manage Sections (${tpl.blockedPhrases.length})`}
+                              </button>
+                              <button
+                                onClick={() => handleToggleLockTemplate(tpl.id)}
+                                className="btn-secondary"
+                                style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
+                                title={tpl.isLocked ? "Unlock template to allow editing" : "Lock template to prevent editing"}
+                              >
+                                {tpl.isLocked ? <><UnlockIcon />Unlock</> : <><LockIcon />Lock</>}
+                              </button>
+                              <button
+                                onClick={() => handleRenameTemplate(tpl.id, tpl.name)}
+                                className="btn-secondary"
+                                style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
+                                title="Rename Template"
+                              >
+                                <EditIcon />Rename
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteTemplate(tpl.id)} 
+                                className="btn-danger-outline"
+                                style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
+                              >
+                                <TrashIcon /> Delete
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded details: blocked phrases list */}
+                          {isExpanded && (
+                            <div style={{ marginTop: "16px", borderTop: "1px solid var(--border-color)", paddingTop: "14px", animation: "fadeIn 0.2s" }}>
+                              <h5 style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
+                                Excluded Sections ({tpl.blockedPhrases.length})
+                              </h5>
+                              
+                              {tpl.blockedPhrases.length === 0 ? (
+                                <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontStyle: "italic", marginBottom: "12px" }}>
+                                  No sections excluded yet. Use the Distillery above to exclude lines, or add them manually below.
+                                </p>
+                              ) : (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+                                  {tpl.blockedPhrases.map((phrase, pIdx) => (
+                                    <span 
+                                      key={pIdx} 
+                                      style={{ 
+                                        background: "var(--bg-app)", 
+                                        border: "1px solid var(--border-color)", 
+                                        borderRadius: "6px", 
+                                        padding: "4px 8px", 
+                                        fontSize: "0.75rem", 
+                                        display: "inline-flex", 
+                                        alignItems: "center", 
+                                        gap: "6px" 
+                                      }}
+                                    >
+                                      <span>{phrase}</span>
+                                      <button 
+                                        onClick={() => handleRemoveBlockedPhrase(tpl.id, phrase)}
+                                        style={{ background: "transparent", border: "none", color: "var(--color-danger)", cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+                                      >
+                                        <ClearIcon />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Inline form to add blocked phrase */}
+                              <div style={{ display: "flex", gap: "8px" }}>
+                                <input 
+                                  type="text" 
+                                  id={`add-phrase-${tpl.id}`}
+                                  placeholder="Add text or phrase to block section..." 
+                                  className="modern-select" 
+                                  style={{ padding: "6px 12px", fontSize: "0.8rem", background: "var(--bg-input)", flex: 1 }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      const input = document.getElementById(`add-phrase-${tpl.id}`);
+                                      if (input && input.value.trim()) {
+                                        handleAddBlockedPhrase(tpl.id, input.value.trim());
+                                        input.value = "";
+                                      }
+                                    }
+                                  }}
+                                />
+                                <button 
+                                  onClick={() => {
+                                    const input = document.getElementById(`add-phrase-${tpl.id}`);
+                                    if (input && input.value.trim()) {
+                                      handleAddBlockedPhrase(tpl.id, input.value.trim());
+                                      input.value = "";
+                                    }
+                                  }}
+                                  className="btn btn-secondary" 
+                                  style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return null;
+        })}
 
         {/* History Section */}
         <section className="history-section">
