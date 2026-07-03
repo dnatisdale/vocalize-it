@@ -183,7 +183,12 @@ function App() {
     }
   });
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState("auto"); // "auto", "none", or tpl_id
+  const [selectedTemplateId, setSelectedTemplateId] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("vocalize_selected_template_id") || "none";
+    }
+    return "none";
+  });
   const [isTuningMode, setIsTuningMode] = useState(false); // Boilerplate Tuner active state
   const [showScrollTop, setShowScrollTop] = useState(false); // Scroll-to-top floating button visibility
 
@@ -209,34 +214,23 @@ function App() {
     localStorage.setItem("vocalize_newsletter_templates", JSON.stringify(templates));
   }, [templates]);
 
-  // Derive autoDetectedTemplateId synchronously during render (fixes set-state-in-effect error)
-  const autoDetectedTemplateId = (() => {
-    if (!clipboardText || templates.length === 0) return "";
-    const textLower = clipboardText.toLowerCase();
-    const matched = templates.find(t => 
-      t.triggerKeyword && 
-      t.triggerKeyword.trim() !== "" && 
-      textLower.includes(t.triggerKeyword.toLowerCase())
-    );
-    return matched ? matched.id : "";
-  })();
+  // Save selected template selection to localStorage
+  useEffect(() => {
+    localStorage.setItem("vocalize_selected_template_id", selectedTemplateId);
+  }, [selectedTemplateId]);
 
-  // Determine which template is actually active synchronously (fixes set-state-in-effect error)
+  // Determine which template is actually active synchronously
   const activeTemplate = (() => {
     if (selectedTemplateId === "none") return null;
-    if (selectedTemplateId === "auto") {
-      return templates.find(t => t.id === autoDetectedTemplateId) || null;
-    }
     return templates.find(t => t.id === selectedTemplateId) || null;
   })();
 
   // Template CRUD actions
-  const handleCreateTemplate = (name, triggerKeyword) => {
+  const handleCreateTemplate = (name) => {
     const newId = "tpl_" + Date.now().toString();
     const newTpl = {
       id: newId,
       name: name.trim() || "Unnamed Template",
-      triggerKeyword: triggerKeyword.trim(),
       blockedPhrases: []
     };
     setTemplates(prev => [...prev, newTpl]);
@@ -267,23 +261,13 @@ function App() {
     if (window.confirm("Are you sure you want to delete this newsletter template?")) {
       setTemplates(prev => {
         const updated = prev.filter(t => t.id !== id);
-        // If we deleted the active template, clear the filtered output if in distill mode
+        // If we deleted the active template, reset selection to "none" and clear custom filters
         if (selectedTemplateId === id) {
-          setSelectedTemplateId("auto");
-          const nextActiveTpl = updated.find(t => t.id === autoDetectedTemplateId) || null;
+          setSelectedTemplateId("none");
           if (rule === "distill" && clipboardText) {
-            const clean = distillContent(clipboardText, { customBlockedPhrases: nextActiveTpl ? nextActiveTpl.blockedPhrases : [] });
+            const clean = distillContent(clipboardText, { customBlockedPhrases: [] });
             setProcessedText(clean);
             setDistillerStats(getDistillerStats(clipboardText, clean));
-          }
-        } else {
-          const wasActiveViaAuto = (selectedTemplateId === "auto" && autoDetectedTemplateId === id);
-          if (wasActiveViaAuto) {
-            if (rule === "distill" && clipboardText) {
-              const clean = distillContent(clipboardText);
-              setProcessedText(clean);
-              setDistillerStats(getDistillerStats(clipboardText, clean));
-            }
           }
         }
         return updated;
@@ -341,10 +325,11 @@ function App() {
 
   const handleSelectTemplate = (id) => {
     setSelectedTemplateId(id);
+    if (id !== "none") {
+      setIsTuningMode(true);
+    }
     let targetTemplate = null;
-    if (id === "auto") {
-      targetTemplate = templates.find(t => t.id === autoDetectedTemplateId) || null;
-    } else if (id !== "none") {
+    if (id !== "none") {
       targetTemplate = templates.find(t => t.id === id) || null;
     }
     if (rule === "distill" && clipboardText) {
@@ -551,15 +536,29 @@ function App() {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
+  // Share paste logic for both button and text area paste events
+  const handleTextPaste = (text) => {
+    setClipboardText(text);
+    stopSpeech();
+
+    // If Clean-It-Up mode is selected, automatically run clean up and open the tuner immediately
+    if (rule === "distill") {
+      setIsTuningMode(true);
+      const clean = distillContent(text, { customBlockedPhrases: activeTemplate ? activeTemplate.blockedPhrases : [] });
+      setProcessedText(clean);
+      setDistillerStats(getDistillerStats(text, clean));
+    } else {
+      setProcessedText("");
+      setDistillerStats("");
+    }
+  };
+
   // Clipboard Paste Logic
   const handlePaste = async () => {
     try {
       if (window.confirm("Do you want to paste the text from your clipboard?")) {
         const text = await navigator.clipboard.readText();
-        setClipboardText(text);
-        setProcessedText("");
-        setDistillerStats("");
-        stopSpeech();
+        handleTextPaste(text);
       }
     } catch (err) {
       console.error("Failed to read clipboard contents: ", err);
@@ -847,6 +846,13 @@ function App() {
               <textarea
                 value={clipboardText}
                 onChange={(e) => setClipboardText(e.target.value)}
+                onPaste={(e) => {
+                  const pastedText = e.clipboardData.getData("text");
+                  if (pastedText) {
+                    // Slight delay to let React cycle finish, then run paste handler
+                    setTimeout(() => handleTextPaste(pastedText), 50);
+                  }
+                }}
                 className="modern-textarea"
                 placeholder="Enter or paste text to process..."
               />
@@ -857,14 +863,14 @@ function App() {
             {templates.length > 0 && (
               <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                 {activeTemplate ? (
-                  <span className="template-badge-applied" title={`Auto-detected or manually selected: "${activeTemplate.triggerKeyword}"`}>
+                  <span className="template-badge-applied" title={`Selected Filter: "${activeTemplate.name}"`}>
                     ✓ Filter Active: <strong>{activeTemplate.name}</strong> ({activeTemplate.blockedPhrases.length} rules)
                   </span>
-                ) : selectedTemplateId === "auto" && autoDetectedTemplateId === "" ? (
+                ) : (
                   <span className="template-badge-none">
-                    No matching newsletter detected (auto-detect on)
+                    No active filter template (select one in controls row)
                   </span>
-                ) : null}
+                )}
               </div>
             )}
 
@@ -976,8 +982,7 @@ function App() {
                     className="modern-select"
                     style={{ paddingRight: "32px", fontSize: "0.95rem" }}
                   >
-                    <option value="auto">Auto-Detect Filter</option>
-                    <option value="none">No Filter</option>
+                    <option value="none">Select Newsletter Filter...</option>
                     {templates.map(t => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
@@ -1196,7 +1201,7 @@ function App() {
           </div>
 
           <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
-            Create custom templates for newsletters you paste regularly. Add trigger keywords (words that uniquely appear in the newsletter) to auto-detect the template and apply custom filters to strip out specific boilerplate.
+            Create custom templates for newsletters you paste regularly to exclude specific boilerplate and repeating sections from being read.
           </p>
 
           {/* Form to create a new template */}
@@ -1211,31 +1216,18 @@ function App() {
                 style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
               />
             </div>
-            <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Trigger Keyword / Unique Text</label>
-              <input 
-                type="text" 
-                id="new-tpl-trigger" 
-                placeholder="e.g. morningbrew.com" 
-                className="modern-select" 
-                style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
-              />
-            </div>
             <div style={{ display: "flex", alignItems: "flex-end" }}>
               <button 
                 onClick={() => {
                   const nameInput = document.getElementById("new-tpl-name");
-                  const triggerInput = document.getElementById("new-tpl-trigger");
-                  if (nameInput && triggerInput) {
+                  if (nameInput) {
                     const name = nameInput.value.trim();
-                    const trigger = triggerInput.value.trim();
                     if (!name) {
                       alert("Please enter a template name.");
                       return;
                     }
-                    handleCreateTemplate(name, trigger);
+                    handleCreateTemplate(name);
                     nameInput.value = "";
-                    triggerInput.value = "";
                   }
                 }} 
                 className="btn btn-accent" 
@@ -1270,7 +1262,7 @@ function App() {
                       <div>
                         <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>{tpl.name}</h4>
                         <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>
-                          Auto-detect keyword: <code style={{ background: "var(--bg-app)", padding: "2px 6px", borderRadius: "4px", fontSize: "0.75rem" }}>{tpl.triggerKeyword || "(none)"}</code>
+                          Active Rules: {tpl.blockedPhrases.length} line filters
                         </p>
                       </div>
                       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
