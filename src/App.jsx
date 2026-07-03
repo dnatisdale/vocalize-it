@@ -226,6 +226,8 @@ function App() {
   const [draggableSection, setDraggableSection] = useState(null);
   // Per-template controlled input values for the "add phrase" fields
   const [addPhraseInputs, setAddPhraseInputs] = useState({});
+  // Whether the collapsed plain distilled text is visible
+  const [showDistilledText, setShowDistilledText] = useState(false);
 
   // Scroll listener to show/hide scroll-to-top button
   useEffect(() => {
@@ -1193,13 +1195,20 @@ function App() {
                   </p>
                 )}
                 
-                {rule === "distill" && activeTemplate ? (
+                {/* Always show section breakout in distill mode when text is pasted */}
+                {rule === "distill" ? (
                   <div className="boilerplate-tuner-panel" style={{ animation: "fadeIn 0.2s" }}>
                     <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
-                      <strong>Distillery</strong>: Below are all the newsletter sections. Click <strong>X Exclude</strong> to cross out sections that shouldn't be read, and <strong>+ Include</strong> to restore them.
-                      {activeTemplate.isLocked && (
-                        <span style={{ marginLeft: "8px", color: "var(--color-danger)", fontWeight: 600, fontSize: "0.8rem" }}>
-                          🔒 Template is locked — unlock it in the Filters manager below to make changes.
+                      <strong>Distillery Sections</strong>: Click <strong>X Exclude</strong> to cross out sections that won't be read, and <strong>+ Include</strong> to restore them.
+                      {activeTemplate ? (
+                        activeTemplate.isLocked && (
+                          <span style={{ marginLeft: "8px", color: "var(--color-danger)", fontWeight: 600, fontSize: "0.8rem" }}>
+                            🔒 Template is locked — unlock it in the Filters manager below to make changes.
+                          </span>
+                        )
+                      ) : (
+                        <span style={{ marginLeft: "8px", color: "var(--text-secondary)", fontSize: "0.8rem", fontStyle: "italic" }}>
+                          No template selected — changes here won't be saved until you apply or create a template below.
                         </span>
                       )}
                     </p>
@@ -1209,22 +1218,23 @@ function App() {
                         return baseClean.split("\n\n").map((para, idx) => {
                           const trimmedPara = para.trim();
                           if (!trimmedPara) return null;
-                          
+
                           const lowerPara = trimmedPara.toLowerCase();
-                          const matchingPhrase = activeTemplate.blockedPhrases.find(phrase => 
+                          const blockedPhrases = activeTemplate ? activeTemplate.blockedPhrases : [];
+                          const matchingPhrase = blockedPhrases.find(phrase =>
                             phrase && lowerPara.includes(phrase.toLowerCase())
                           );
                           const isBlocked = !!matchingPhrase;
-                          const isLocked = activeTemplate.isLocked;
-                          
+                          const isLocked = activeTemplate ? activeTemplate.isLocked : false;
+
                           return (
-                            <div 
-                              key={idx} 
-                              className="tuner-row" 
-                              style={{ 
-                                display: "flex", 
-                                justifyContent: "space-between", 
-                                alignItems: "flex-start", 
+                            <div
+                              key={idx}
+                              className="tuner-row"
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
                                 gap: "12px",
                                 padding: "10px 12px",
                                 background: isBlocked ? "rgba(239, 68, 68, 0.03)" : "var(--bg-app)",
@@ -1234,69 +1244,73 @@ function App() {
                                 transition: "all 0.2s ease"
                               }}
                             >
-                              <span style={{ 
-                                flex: 1, 
-                                whiteSpace: "pre-wrap", 
+                              <span style={{
+                                flex: 1,
+                                whiteSpace: "pre-wrap",
                                 textDecoration: isBlocked ? "line-through" : "none",
                                 opacity: isBlocked ? 0.45 : 1,
                                 color: isBlocked ? "var(--text-secondary)" : "var(--text-primary)"
                               }}>
                                 {trimmedPara}
                               </span>
-                              {isBlocked ? (
-                                <button
-                                  onClick={() => {
-                                    if (isLocked) {
-                                      alert("This template is locked. Unlock it in the 'Custom Newsletter Filters' section below to make changes.");
-                                      return;
-                                    }
-                                    handleRemoveBlockedPhrase(activeTemplate.id, matchingPhrase);
-                                  }}
-                                  className="btn-secondary"
-                                  style={{ 
-                                    padding: "4px 8px", fontSize: "0.75rem", 
-                                    cursor: isLocked ? "not-allowed" : "pointer", 
-                                    opacity: isLocked ? 0.45 : 1,
-                                    display: "flex", alignItems: "center", gap: "4px", 
-                                    border: "1px solid var(--color-success)", 
-                                    color: "var(--color-success)", 
-                                    background: "rgba(16, 185, 129, 0.05)" 
-                                  }}
-                                  title={isLocked ? "Unlock the template below to re-include this section" : "Include this section back in the reading stream (+)"}
-                                >
-                                  + Include
-                                </button>
+                              {activeTemplate ? (
+                                isBlocked ? (
+                                  <button
+                                    onClick={() => {
+                                      if (isLocked) {
+                                        alert("This template is locked. Unlock it in the 'Custom Newsletter Filters' section below to make changes.");
+                                        return;
+                                      }
+                                      handleRemoveBlockedPhrase(activeTemplate.id, matchingPhrase);
+                                    }}
+                                    className="btn-secondary"
+                                    style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", opacity: isLocked ? 0.45 : 1, display: "flex", alignItems: "center", gap: "4px", border: "1px solid var(--color-success)", color: "var(--color-success)", background: "rgba(16, 185, 129, 0.05)" }}
+                                    title={isLocked ? "Unlock the template below to re-include this section" : "Include this section back in the reading stream (+)"}
+                                  >
+                                    + Include
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      if (isLocked) {
+                                        alert("This template is locked. Unlock it in the 'Custom Newsletter Filters' section below to make changes.");
+                                        return;
+                                      }
+                                      const filterPhrase = trimmedPara.length > 70 ? trimmedPara.substring(0, 70) : trimmedPara;
+                                      handleAddBlockedPhrase(activeTemplate.id, filterPhrase);
+                                    }}
+                                    className="btn-danger-outline"
+                                    style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", opacity: isLocked ? 0.45 : 1, display: "flex", alignItems: "center", gap: "4px" }}
+                                    title={isLocked ? "Unlock the template below to exclude this section" : "Exclude this section from being read (X)"}
+                                  >
+                                    X Exclude
+                                  </button>
+                                )
                               ) : (
-                                <button
-                                  onClick={() => {
-                                    if (isLocked) {
-                                      alert("This template is locked. Unlock it in the 'Custom Newsletter Filters' section below to make changes.");
-                                      return;
-                                    }
-                                    const filterPhrase = trimmedPara.length > 70 
-                                      ? trimmedPara.substring(0, 70) 
-                                      : trimmedPara;
-                                    handleAddBlockedPhrase(activeTemplate.id, filterPhrase);
-                                  }}
-                                  className="btn-danger-outline"
-                                  style={{ 
-                                    padding: "4px 8px", fontSize: "0.75rem", 
-                                    cursor: isLocked ? "not-allowed" : "pointer", 
-                                    opacity: isLocked ? 0.45 : 1,
-                                    display: "flex", alignItems: "center", gap: "4px" 
-                                  }}
-                                  title={isLocked ? "Unlock the template below to exclude this section" : "Exclude this section from being read (X)"}
-                                >
-                                  X Exclude
-                                </button>
+                                <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)", fontStyle: "italic", flexShrink: 0 }}>No template</span>
                               )}
                             </div>
                           );
                         });
                       })()}
                     </div>
-                  </div>
 
+                    {/* Collapsible plain distilled text */}
+                    {processedText && (
+                      <div style={{ marginTop: "16px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
+                        <button
+                          onClick={() => setShowDistilledText(v => !v)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px", padding: 0 }}
+                        >
+                          <span style={{ fontSize: "0.7rem" }}>{showDistilledText ? "▼" : "▶"}</span>
+                          {showDistilledText ? "Hide" : "Show"} distilled reading text
+                        </button>
+                        {showDistilledText && (
+                          <p className="result-content" style={{ marginTop: "10px", fontSize: "0.9rem" }}>{processedText}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <p className="result-content">{processedText}</p>
                 )}
