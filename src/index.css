@@ -630,7 +630,7 @@ body {
 /* SW Reload Toast */
 .sw-toast {
   position: fixed;
-  bottom: 24px;
+  top: 24px;
   left: 50%;
   transform: translate(-50%, 0);
   background: var(--bg-input);
@@ -644,7 +644,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  animation: slideUpCenter 0.3s ease forwards;
+  animation: slideDownCenter 0.3s ease forwards;
 }
 
 .sw-toast-close-btn {
@@ -668,6 +668,17 @@ body {
   color: var(--text-primary);
 }
 
+@keyframes slideDownCenter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 @keyframes slideUpCenter {
   from {
     opacity: 0;
@@ -683,6 +694,17 @@ body {
   from {
     opacity: 0;
     transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDownToast {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
   }
   to {
     opacity: 1;
@@ -760,14 +782,15 @@ body {
     text-align: center;
   }
   .sw-toast {
-    bottom: 16px;
+    top: 16px;
+    bottom: auto;
     left: 16px;
     right: 16px;
     width: auto;
     max-width: 420px;
     margin: 0 auto;
     transform: none;
-    animation: slideUpToast 0.3s ease forwards;
+    animation: slideDownToast 0.3s ease forwards;
   }
   .history-item {
     flex-direction: column;
