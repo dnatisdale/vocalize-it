@@ -262,20 +262,7 @@ export function distillContent(rawText, options = {}) {
       survivingLines.push("");
       continue;
     }
-
-    // ── STEP 2a: Check custom blocked phrases ─────────────────────────────────
     let dropped = false;
-    if (customBlockedPhrases && customBlockedPhrases.length > 0) {
-      const lowerTrimmed = trimmed.toLowerCase();
-      for (const phrase of customBlockedPhrases) {
-        if (phrase && lowerTrimmed.includes(phrase.toLowerCase())) {
-          if (debug) console.log(`[distiller] DROP [custom-phrase]:`, JSON.stringify(trimmed));
-          dropped = true;
-          break;
-        }
-      }
-    }
-    if (dropped) continue;
 
     // ── STEP 2b: Check LINE_DROP_RULES ───────────────────────────────────────
     for (const rule of LINE_DROP_RULES) {
@@ -311,8 +298,19 @@ export function distillContent(rawText, options = {}) {
   // Collapse multiple sequential blank lines (again, after filtering may create runs)
   const collapsed = assembled.replace(/\n{3,}/g, "\n\n");
 
+  // Apply custom blocked phrases on paragraph level to match the tuner exactly
+  let paragraphs = collapsed.split("\n\n");
+  if (customBlockedPhrases && customBlockedPhrases.length > 0) {
+    paragraphs = paragraphs.filter(para => {
+      const lowerPara = para.toLowerCase();
+      return !customBlockedPhrases.some(phrase => 
+        phrase && lowerPara.includes(phrase.toLowerCase())
+      );
+    });
+  }
+
   // Final trim
-  return collapsed.trim();
+  return paragraphs.join("\n\n").trim();
 }
 
 
