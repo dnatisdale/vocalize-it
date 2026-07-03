@@ -224,6 +224,8 @@ function App() {
   });
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [draggableSection, setDraggableSection] = useState(null);
+  // Per-template controlled input values for the "add phrase" fields
+  const [addPhraseInputs, setAddPhraseInputs] = useState({});
 
   // Scroll listener to show/hide scroll-to-top button
   useEffect(() => {
@@ -1569,34 +1571,46 @@ function App() {
                                 </div>
                               )}
 
-                              {/* Inline form to add blocked phrase */}
+                              {/* Inline form to add blocked phrase — controlled input for reliable mobile keyboard support */}
                               <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                 <input 
-                                  type="text" 
-                                  id={`add-phrase-${tpl.id}`}
-                                  placeholder="Add text or phrase to block section..." 
-                                  className="modern-select" 
-                                  style={{ padding: "8px 12px", fontSize: "0.85rem", background: "var(--bg-input)", flex: 1, minWidth: 0, width: "auto" }}
+                                  type="text"
+                                  inputMode="text"
+                                  autoComplete="off"
+                                  placeholder="Add phrase to block section..." 
+                                  value={addPhraseInputs[tpl.id] || ""}
+                                  onChange={(e) => setAddPhraseInputs(prev => ({ ...prev, [tpl.id]: e.target.value }))}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
-                                      const input = document.getElementById(`add-phrase-${tpl.id}`);
-                                      if (input && input.value.trim()) {
-                                        handleAddBlockedPhrase(tpl.id, input.value.trim());
-                                        input.value = "";
+                                      const val = (addPhraseInputs[tpl.id] || "").trim();
+                                      if (val) {
+                                        handleAddBlockedPhrase(tpl.id, val);
+                                        setAddPhraseInputs(prev => ({ ...prev, [tpl.id]: "" }));
                                       }
                                     }
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    padding: "8px 12px",
+                                    fontSize: "0.85rem",
+                                    background: "var(--bg-input)",
+                                    border: "1px solid var(--border-color)",
+                                    borderRadius: "10px",
+                                    color: "var(--text-primary)",
+                                    outline: "none",
+                                    fontFamily: "inherit"
                                   }}
                                 />
                                 <button 
                                   onClick={() => {
-                                    const input = document.getElementById(`add-phrase-${tpl.id}`);
-                                    if (input && input.value.trim()) {
-                                      handleAddBlockedPhrase(tpl.id, input.value.trim());
-                                      input.value = "";
+                                    const val = (addPhraseInputs[tpl.id] || "").trim();
+                                    if (val) {
+                                      handleAddBlockedPhrase(tpl.id, val);
+                                      setAddPhraseInputs(prev => ({ ...prev, [tpl.id]: "" }));
                                     }
                                   }}
-                                  className="btn-secondary" 
-                                  style={{ padding: "8px 14px", fontSize: "0.85rem", flexShrink: 0, whiteSpace: "nowrap", borderRadius: "10px", cursor: "pointer", border: "1px solid var(--border-color)", background: "var(--bg-input)", color: "var(--text-primary)" }}
+                                  style={{ padding: "8px 16px", fontSize: "0.85rem", flexShrink: 0, whiteSpace: "nowrap", borderRadius: "10px", cursor: "pointer", border: "1px solid var(--border-color)", background: "var(--bg-input)", color: "var(--text-primary)", fontFamily: "inherit", fontWeight: 600 }}
                                 >
                                   Add
                                 </button>
