@@ -554,11 +554,13 @@ function App() {
   // Clipboard Paste Logic
   const handlePaste = async () => {
     try {
-      const text = await navigator.clipboard.readText();
-      setClipboardText(text);
-      setProcessedText("");
-      setDistillerStats("");
-      stopSpeech();
+      if (window.confirm("Do you want to paste the text from your clipboard?")) {
+        const text = await navigator.clipboard.readText();
+        setClipboardText(text);
+        setProcessedText("");
+        setDistillerStats("");
+        stopSpeech();
+      }
     } catch (err) {
       console.error("Failed to read clipboard contents: ", err);
       alert("Please allow clipboard permissions in your browser, or manually paste the text into the textbox.");
@@ -851,31 +853,16 @@ function App() {
               <span className="char-counter">{clipboardText.length} chars</span>
             </div>
 
-            {/* Template Selector Row */}
+            {/* Active Template Status Badge */}
             {templates.length > 0 && (
-              <div className="template-selector-row" style={{ marginTop: "12px", display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-                <span className="slider-label" style={{ fontSize: "0.85rem", fontWeight: 700 }}>Newsletter Filter:</span>
-                <div className="select-wrapper" style={{ flex: "none", minWidth: "160px" }}>
-                  <select
-                    value={selectedTemplateId}
-                    onChange={(e) => handleSelectTemplate(e.target.value)}
-                    className="modern-select"
-                    style={{ padding: "6px 28px 6px 12px", fontSize: "0.85rem" }}
-                  >
-                    <option value="auto">Auto-Detect</option>
-                    <option value="none">None (Ignore Filters)</option>
-                    {templates.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                 {activeTemplate ? (
-                  <span className="template-badge-applied" title={`Triggered by keyword: "${activeTemplate.triggerKeyword}"`}>
-                    ✓ Applied: <strong>{activeTemplate.name}</strong> ({activeTemplate.blockedPhrases.length} custom filters)
+                  <span className="template-badge-applied" title={`Auto-detected or manually selected: "${activeTemplate.triggerKeyword}"`}>
+                    ✓ Filter Active: <strong>{activeTemplate.name}</strong> ({activeTemplate.blockedPhrases.length} rules)
                   </span>
                 ) : selectedTemplateId === "auto" && autoDetectedTemplateId === "" ? (
                   <span className="template-badge-none">
-                    No matching newsletter detected
+                    No matching newsletter detected (auto-detect on)
                   </span>
                 ) : null}
               </div>
@@ -979,6 +966,24 @@ function App() {
                   </ul>
                 )}
               </div>
+
+              {/* Newsletter Template Selector (Only visible for Clean-It-Up mode) */}
+              {templates.length > 0 && rule === "distill" && (
+                <div className="select-wrapper" style={{ flex: 1, minWidth: "160px" }}>
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => handleSelectTemplate(e.target.value)}
+                    className="modern-select"
+                    style={{ paddingRight: "32px", fontSize: "0.95rem" }}
+                  >
+                    <option value="auto">Auto-Detect Filter</option>
+                    <option value="none">No Filter</option>
+                    {templates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <button
                 onClick={rule === "distill" ? handleDistill : handleProcess}
