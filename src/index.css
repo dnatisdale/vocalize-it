@@ -878,3 +878,37 @@ body {
   box-shadow: 0 4px 12px var(--accent-glow);
   transform: translateY(-1px);
 }
+
+/* Floating Scroll to Top button */
+.scroll-to-top-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  animation: fadeIn 0.2s ease;
+}
+
+.scroll-to-top-btn:hover {
+  transform: translateY(-2px);
+  background: var(--color-primary-hover);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* Shift up on mobile to avoid overlap with bottom toast notifications */
+@media (max-width: 600px) {
+  .scroll-to-top-btn {
+    bottom: 80px;
+  }
+}

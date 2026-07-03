@@ -179,6 +179,24 @@ function App() {
 
   const [selectedTemplateId, setSelectedTemplateId] = useState("auto"); // "auto", "none", or tpl_id
   const [isTuningMode, setIsTuningMode] = useState(false); // Boilerplate Tuner active state
+  const [showScrollTop, setShowScrollTop] = useState(false); // Scroll-to-top floating button visibility
+
+  // Scroll listener to show/hide scroll-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Save templates to localStorage
   useEffect(() => {
@@ -208,10 +226,6 @@ function App() {
 
   // Template CRUD actions
   const handleCreateTemplate = (name, triggerKeyword) => {
-    if (templates.length >= 10) {
-      alert("You can have a maximum of 10 newsletter templates.");
-      return;
-    }
     const newTpl = {
       id: "tpl_" + Date.now().toString(),
       name: name.trim() || "Unnamed Template",
@@ -644,6 +658,58 @@ function App() {
     setIsPaused(false);
   };
 
+  // Change voice and update speech playback immediately if active
+  const handleVoiceChange = (voiceName) => {
+    setSelectedVoice(voiceName);
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(processedText);
+      const voiceObj = voices.find((v) => v.name === voiceName);
+      if (voiceObj) utterance.voice = voiceObj;
+      utterance.rate = rate;
+      utteranceRef.current = utterance;
+      utterance.onend = () => {
+        setIsPlaying(false);
+        setIsPaused(false);
+      };
+      utterance.onerror = (e) => {
+        console.error("SpeechSynthesis error:", e);
+        setIsPlaying(false);
+        setIsPaused(false);
+      };
+      window.speechSynthesis.speak(utterance);
+      setIsPlaying(true);
+      setIsPaused(false);
+    }
+  };
+
+  // Change rate and update speech playback immediately if active
+  const handleRateChange = (newRate) => {
+    setRate(newRate);
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(processedText);
+      if (selectedVoice) {
+        const voiceObj = voices.find((v) => v.name === selectedVoice);
+        if (voiceObj) utterance.voice = voiceObj;
+      }
+      utterance.rate = newRate;
+      utteranceRef.current = utterance;
+      utterance.onend = () => {
+        setIsPlaying(false);
+        setIsPaused(false);
+      };
+      utterance.onerror = (e) => {
+        console.error("SpeechSynthesis error:", e);
+        setIsPlaying(false);
+        setIsPaused(false);
+      };
+      window.speechSynthesis.speak(utterance);
+      setIsPlaying(true);
+      setIsPaused(false);
+    }
+  };
+
   // Copy result to clipboard
   const handleCopyResult = () => {
     if (!processedText) return;
@@ -945,47 +1011,77 @@ function App() {
             {isTuningMode && activeTemplate ? (
               <div className="boilerplate-tuner-panel" style={{ animation: "fadeIn 0.2s", marginBottom: "20px" }}>
                 <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
-                  <strong>Boilerplate Tuner</strong>: Below are the paragraphs that survived distillation. Click the 🚫 icon next to any paragraph to instantly add it to <strong>{activeTemplate.name}</strong>'s blocked list and hide it.
+                  <strong>Boilerplate Tuner</strong>: Below are the paragraphs that survived basic clean-up. Click <strong>🚫 Exclude</strong> next to any line to stop it from being read (adds it to <strong>{activeTemplate.name}</strong>'s filters). Click <strong>✓ Include</strong> to restore it.
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {processedText.split("\n\n").map((para, idx) => {
-                    const trimmedPara = para.trim();
-                    if (!trimmedPara) return null;
-                    return (
-                      <div 
-                        key={idx} 
-                        className="tuner-row" 
-                        style={{ 
-                          display: "flex", 
-                          justifyContent: "space-between", 
-                          alignItems: "flex-start", 
-                          gap: "12px",
-                          padding: "10px 12px",
-                          background: "var(--bg-app)",
-                          border: "1px solid var(--border-color)",
-                          borderRadius: "10px",
-                          fontSize: "0.95rem"
-                        }}
-                      >
-                        <span style={{ flex: 1, whiteSpace: "pre-wrap" }}>{trimmedPara}</span>
-                        <button
-                          onClick={() => {
-                            // Add first 70 characters of the paragraph to blocked list
-                            const filterPhrase = trimmedPara.length > 70 
-                              ? trimmedPara.substring(0, 70) 
-                              : trimmedPara;
-                            handleAddBlockedPhrase(activeTemplate.id, filterPhrase);
-                            alert(`Added to blocked phrases: "${filterPhrase}..."`);
+                  {(() => {
+                    const baseClean = distillContent(clipboardText);
+                    return baseClean.split("\n\n").map((para, idx) => {
+                      const trimmedPara = para.trim();
+                      if (!trimmedPara) return null;
+                      
+                      const lowerPara = trimmedPara.toLowerCase();
+                      const matchingPhrase = activeTemplate.blockedPhrases.find(phrase => 
+                        phrase && lowerPara.includes(phrase.toLowerCase())
+                      );
+                      const isBlocked = !!matchingPhrase;
+                      
+                      return (
+                        <div 
+                          key={idx} 
+                          className="tuner-row" 
+                          style={{ 
+                            display: "flex", 
+                            justifyContent: "space-between", 
+                            alignItems: "flex-start", 
+                            gap: "12px",
+                            padding: "10px 12px",
+                            background: isBlocked ? "rgba(239, 68, 68, 0.05)" : "var(--bg-app)",
+                            border: isBlocked ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid var(--border-color)",
+                            borderRadius: "10px",
+                            fontSize: "0.95rem",
+                            transition: "all 0.2s ease"
                           }}
-                          className="btn-danger-outline"
-                          style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
-                          title="Block this paragraph"
                         >
-                          🚫 Mute
-                        </button>
-                      </div>
-                    );
-                  })}
+                          <span style={{ 
+                            flex: 1, 
+                            whiteSpace: "pre-wrap", 
+                            textDecoration: isBlocked ? "line-through" : "none",
+                            opacity: isBlocked ? 0.45 : 1,
+                            color: isBlocked ? "var(--text-secondary)" : "var(--text-primary)"
+                          }}>
+                            {trimmedPara}
+                          </span>
+                          {isBlocked ? (
+                            <button
+                              onClick={() => {
+                                handleRemoveBlockedPhrase(activeTemplate.id, matchingPhrase);
+                              }}
+                              className="btn-secondary"
+                              style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", border: "1px solid var(--color-secondary)" }}
+                              title="Include this paragraph back in speech synthesis"
+                            >
+                              ✓ Include
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                const filterPhrase = trimmedPara.length > 70 
+                                  ? trimmedPara.substring(0, 70) 
+                                  : trimmedPara;
+                                handleAddBlockedPhrase(activeTemplate.id, filterPhrase);
+                              }}
+                              className="btn-danger-outline"
+                              style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                              title="Exclude this paragraph from being read"
+                            >
+                              🚫 Exclude
+                            </button>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             ) : (
@@ -1004,7 +1100,7 @@ function App() {
                   <div className="select-wrapper" style={{ minWidth: "100%" }}>
                     <select
                       value={selectedVoice}
-                      onChange={(e) => setSelectedVoice(e.target.value)}
+                      onChange={(e) => handleVoiceChange(e.target.value)}
                       className="modern-select"
                       style={{ padding: "8px 12px", fontSize: "0.85rem" }}
                     >
@@ -1033,7 +1129,7 @@ function App() {
                     max="2.0"
                     step="0.1"
                     value={rate}
-                    onChange={(e) => setRate(parseFloat(e.target.value))}
+                    onChange={(e) => handleRateChange(parseFloat(e.target.value))}
                     className="modern-slider"
                   />
                 </div>
@@ -1062,7 +1158,7 @@ function App() {
         <section className="templates-section" style={{ marginTop: "32px", borderTop: "1px solid var(--border-color)", paddingTop: "24px", textAlign: "left" }}>
           <div className="history-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <SparklesIcon /> Custom Newsletter Filters ({templates.length}/10)
+              <SparklesIcon /> Custom Newsletter Filters ({templates.length})
             </span>
           </div>
 
@@ -1071,57 +1167,51 @@ function App() {
           </p>
 
           {/* Form to create a new template */}
-          {templates.length < 10 ? (
-            <div className="new-template-form" style={{ display: "flex", gap: "10px", flexWrap: "wrap", background: "var(--bg-app)", padding: "16px", borderRadius: "12px", border: "1px solid var(--border-color)", marginBottom: "20px" }}>
-              <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Template Name</label>
-                <input 
-                  type="text" 
-                  id="new-tpl-name" 
-                  placeholder="e.g. Morning Brew" 
-                  className="modern-select" 
-                  style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Trigger Keyword / Unique Text</label>
-                <input 
-                  type="text" 
-                  id="new-tpl-trigger" 
-                  placeholder="e.g. morningbrew.com" 
-                  className="modern-select" 
-                  style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
-                />
-              </div>
-              <div style={{ display: "flex", alignItems: "flex-end" }}>
-                <button 
-                  onClick={() => {
-                    const nameInput = document.getElementById("new-tpl-name");
-                    const triggerInput = document.getElementById("new-tpl-trigger");
-                    if (nameInput && triggerInput) {
-                      const name = nameInput.value.trim();
-                      const trigger = triggerInput.value.trim();
-                      if (!name) {
-                        alert("Please enter a template name.");
-                        return;
-                      }
-                      handleCreateTemplate(name, trigger);
-                      nameInput.value = "";
-                      triggerInput.value = "";
-                    }
-                  }} 
-                  className="btn btn-accent" 
-                  style={{ padding: "10px 16px", fontSize: "0.85rem", height: "40px" }}
-                >
-                  + Add Template
-                </button>
-              </div>
+          <div className="new-template-form" style={{ display: "flex", gap: "10px", flexWrap: "wrap", background: "var(--bg-app)", padding: "16px", borderRadius: "12px", border: "1px solid var(--border-color)", marginBottom: "20px" }}>
+            <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Template Name</label>
+              <input 
+                type="text" 
+                id="new-tpl-name" 
+                placeholder="e.g. Morning Brew" 
+                className="modern-select" 
+                style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
+              />
             </div>
-          ) : (
-            <p style={{ fontSize: "0.85rem", color: "var(--color-danger)", marginBottom: "16px" }}>
-              You have reached the maximum limit of 10 newsletter templates. Delete one to add a new one.
-            </p>
-          )}
+            <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Trigger Keyword / Unique Text</label>
+              <input 
+                type="text" 
+                id="new-tpl-trigger" 
+                placeholder="e.g. morningbrew.com" 
+                className="modern-select" 
+                style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "flex-end" }}>
+              <button 
+                onClick={() => {
+                  const nameInput = document.getElementById("new-tpl-name");
+                  const triggerInput = document.getElementById("new-tpl-trigger");
+                  if (nameInput && triggerInput) {
+                    const name = nameInput.value.trim();
+                    const trigger = triggerInput.value.trim();
+                    if (!name) {
+                      alert("Please enter a template name.");
+                      return;
+                    }
+                    handleCreateTemplate(name, trigger);
+                    nameInput.value = "";
+                    triggerInput.value = "";
+                  }
+                }} 
+                className="btn btn-accent" 
+                style={{ padding: "10px 16px", fontSize: "0.85rem", height: "40px" }}
+              >
+                + Add Template
+              </button>
+            </div>
+          </div>
 
           {/* List of existing templates */}
           {templates.length === 0 ? (
@@ -1336,6 +1426,19 @@ function App() {
             </button>
           </div>
         </div>
+      )}
+      {/* Floating Scroll to Top button */}
+      {showScrollTop && (
+        <button 
+          onClick={scrollToTop} 
+          className="scroll-to-top-btn" 
+          title="Scroll back up to read/process text"
+          aria-label="Scroll to top"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="icon-svg">
+            <polyline points="18 15 12 9 6 15"/>
+          </svg>
+        </button>
       )}
     </div>
   );
