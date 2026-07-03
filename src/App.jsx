@@ -1356,7 +1356,7 @@ function App() {
               >
                 <div className="result-header">
                   <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <SpeakerIcon /> <span>Text-to-Speech Player</span>
+                    <SpeakerIcon /> <span>TTS Player</span>
                   </span>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     {renderLayoutGrip("player")}
