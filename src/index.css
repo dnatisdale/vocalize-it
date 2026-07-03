@@ -827,3 +827,54 @@ body {
     display: none !important;
   }
 }
+
+/* Newsletter Template selector & badge styles */
+.template-selector-row {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.template-badge-applied {
+  font-size: 0.78rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .template-badge-applied {
+  background: rgba(52, 211, 153, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.template-badge-none {
+  font-size: 0.78rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--bg-app);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Boilerplate Tuner Row Hover Effects */
+.tuner-row {
+  transition: all 0.2s ease;
+}
+
+.tuner-row:hover {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 4px 12px var(--accent-glow);
+  transform: translateY(-1px);
+}

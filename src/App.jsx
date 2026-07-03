@@ -167,6 +167,151 @@ function App() {
   // Content Distiller: tracks the stats message from last distillation
   const [distillerStats, setDistillerStats] = useState("");
 
+  // Templates state (Max 10)
+  const [templates, setTemplates] = useState(() => {
+    try {
+      const saved = localStorage.getItem("vocalize_newsletter_templates");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [selectedTemplateId, setSelectedTemplateId] = useState("auto"); // "auto", "none", or tpl_id
+  const [isTuningMode, setIsTuningMode] = useState(false); // Boilerplate Tuner active state
+
+  // Save templates to localStorage
+  useEffect(() => {
+    localStorage.setItem("vocalize_newsletter_templates", JSON.stringify(templates));
+  }, [templates]);
+
+  // Derive autoDetectedTemplateId synchronously during render (fixes set-state-in-effect error)
+  const autoDetectedTemplateId = (() => {
+    if (!clipboardText || templates.length === 0) return "";
+    const textLower = clipboardText.toLowerCase();
+    const matched = templates.find(t => 
+      t.triggerKeyword && 
+      t.triggerKeyword.trim() !== "" && 
+      textLower.includes(t.triggerKeyword.toLowerCase())
+    );
+    return matched ? matched.id : "";
+  })();
+
+  // Determine which template is actually active synchronously (fixes set-state-in-effect error)
+  const activeTemplate = (() => {
+    if (selectedTemplateId === "none") return null;
+    if (selectedTemplateId === "auto") {
+      return templates.find(t => t.id === autoDetectedTemplateId) || null;
+    }
+    return templates.find(t => t.id === selectedTemplateId) || null;
+  })();
+
+  // Template CRUD actions
+  const handleCreateTemplate = (name, triggerKeyword) => {
+    if (templates.length >= 10) {
+      alert("You can have a maximum of 10 newsletter templates.");
+      return;
+    }
+    const newTpl = {
+      id: "tpl_" + Date.now().toString(),
+      name: name.trim() || "Unnamed Template",
+      triggerKeyword: triggerKeyword.trim(),
+      blockedPhrases: []
+    };
+    setTemplates(prev => [...prev, newTpl]);
+  };
+
+  const handleDeleteTemplate = (id) => {
+    if (window.confirm("Are you sure you want to delete this newsletter template?")) {
+      setTemplates(prev => {
+        const updated = prev.filter(t => t.id !== id);
+        // If we deleted the active template, clear the filtered output if in distill mode
+        if (selectedTemplateId === id) {
+          setSelectedTemplateId("auto");
+          const nextActiveTpl = updated.find(t => t.id === autoDetectedTemplateId) || null;
+          if (rule === "distill" && clipboardText) {
+            const clean = distillContent(clipboardText, { customBlockedPhrases: nextActiveTpl ? nextActiveTpl.blockedPhrases : [] });
+            setProcessedText(clean);
+            setDistillerStats(getDistillerStats(clipboardText, clean));
+          }
+        } else {
+          const wasActiveViaAuto = (selectedTemplateId === "auto" && autoDetectedTemplateId === id);
+          if (wasActiveViaAuto) {
+            if (rule === "distill" && clipboardText) {
+              const clean = distillContent(clipboardText);
+              setProcessedText(clean);
+              setDistillerStats(getDistillerStats(clipboardText, clean));
+            }
+          }
+        }
+        return updated;
+      });
+    }
+  };
+
+  const handleAddBlockedPhrase = (id, phrase) => {
+    const trimmed = phrase.trim();
+    if (!trimmed) return;
+    
+    let updatedTpl = null;
+    setTemplates(prev => {
+      const updated = prev.map(t => {
+        if (t.id === id) {
+          if (t.blockedPhrases.some(p => p.toLowerCase() === trimmed.toLowerCase())) {
+            updatedTpl = t;
+            return t; // duplicate
+          }
+          updatedTpl = { ...t, blockedPhrases: [...t.blockedPhrases, trimmed] };
+          return updatedTpl;
+        }
+        return t;
+      });
+
+      // Synchronously re-distill with the updated template filters
+      if (rule === "distill" && clipboardText && updatedTpl) {
+        const clean = distillContent(clipboardText, { customBlockedPhrases: updatedTpl.blockedPhrases });
+        setProcessedText(clean);
+        setDistillerStats(getDistillerStats(clipboardText, clean));
+      }
+      return updated;
+    });
+  };
+
+  const handleRemoveBlockedPhrase = (id, phraseToRemove) => {
+    let updatedTpl = null;
+    setTemplates(prev => {
+      const updated = prev.map(t => {
+        if (t.id === id) {
+          updatedTpl = { ...t, blockedPhrases: t.blockedPhrases.filter(p => p !== phraseToRemove) };
+          return updatedTpl;
+        }
+        return t;
+      });
+
+      if (rule === "distill" && clipboardText) {
+        const clean = distillContent(clipboardText, { customBlockedPhrases: updatedTpl ? updatedTpl.blockedPhrases : [] });
+        setProcessedText(clean);
+        setDistillerStats(getDistillerStats(clipboardText, clean));
+      }
+      return updated;
+    });
+  };
+
+  const handleSelectTemplate = (id) => {
+    setSelectedTemplateId(id);
+    let targetTemplate = null;
+    if (id === "auto") {
+      targetTemplate = templates.find(t => t.id === autoDetectedTemplateId) || null;
+    } else if (id !== "none") {
+      targetTemplate = templates.find(t => t.id === id) || null;
+    }
+    if (rule === "distill" && clipboardText) {
+      const clean = distillContent(clipboardText, { customBlockedPhrases: targetTemplate ? targetTemplate.blockedPhrases : [] });
+      setProcessedText(clean);
+      setDistillerStats(getDistillerStats(clipboardText, clean));
+    }
+  };
+
   // Category order — persisted to localStorage so users can reorder once and forget
   const [categoryOrder, setCategoryOrder] = useState(() => {
     try {
@@ -379,11 +524,16 @@ function App() {
   };
 
   // Content Distiller — runs entirely client-side, no backend call needed
-  const handleDistill = () => {
-    if (!clipboardText) return;
+  const handleDistill = (overrideText = null, overrideTemplate = null) => {
+    const textToDistill = overrideText !== null ? overrideText : clipboardText;
+    if (!textToDistill) return;
     stopSpeech();
-    const clean = distillContent(clipboardText);
-    const stats = getDistillerStats(clipboardText, clean);
+
+    const tpl = overrideTemplate !== null ? overrideTemplate : activeTemplate;
+    const blockedPhrases = tpl ? tpl.blockedPhrases : [];
+
+    const clean = distillContent(textToDistill, { customBlockedPhrases: blockedPhrases });
+    const stats = getDistillerStats(textToDistill, clean);
     setProcessedText(clean);
     setDistillerStats(stats);
     setRule("distill");
@@ -391,7 +541,7 @@ function App() {
     // Save to history just like an AI result
     const newHistoryItem = {
       id: generateHistoryId(),
-      originalText: clipboardText,
+      originalText: textToDistill,
       processedText: clean,
       rule: "distill",
       timestamp: new Date().toLocaleString(),
@@ -607,6 +757,36 @@ function App() {
               <span className="char-counter">{clipboardText.length} chars</span>
             </div>
 
+            {/* Template Selector Row */}
+            {templates.length > 0 && (
+              <div className="template-selector-row" style={{ marginTop: "12px", display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                <span className="slider-label" style={{ fontSize: "0.85rem", fontWeight: 700 }}>Newsletter Filter:</span>
+                <div className="select-wrapper" style={{ flex: "none", minWidth: "160px" }}>
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => handleSelectTemplate(e.target.value)}
+                    className="modern-select"
+                    style={{ padding: "6px 28px 6px 12px", fontSize: "0.85rem" }}
+                  >
+                    <option value="auto">Auto-Detect</option>
+                    <option value="none">None (Ignore Filters)</option>
+                    {templates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {activeTemplate ? (
+                  <span className="template-badge-applied" title={`Triggered by keyword: "${activeTemplate.triggerKeyword}"`}>
+                    ✓ Applied: <strong>{activeTemplate.name}</strong> ({activeTemplate.blockedPhrases.length} custom filters)
+                  </span>
+                ) : selectedTemplateId === "auto" && autoDetectedTemplateId === "" ? (
+                  <span className="template-badge-none">
+                    No matching newsletter detected
+                  </span>
+                ) : null}
+              </div>
+            )}
+
             <div className="controls-row">
               {/* Custom reorderable category dropdown */}
               <div className="select-wrapper cat-dropdown-wrapper" ref={catDropdownRef} style={{ position: "relative" }}>
@@ -736,7 +916,24 @@ function App() {
           <div className="result-card">
             <div className="result-header">
               <span>{rule === "distill" ? "Distilled Content" : "AI Output Result"}</span>
-              <span className="result-badge">{getRuleLabel(rule)}</span>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                {rule === "distill" && (
+                  <button 
+                    onClick={() => {
+                      if (!activeTemplate) {
+                        alert("Please select or create a newsletter template below the text box first to add custom filters.");
+                        return;
+                      }
+                      setIsTuningMode(o => !o);
+                    }} 
+                    className="btn-secondary" 
+                    style={{ padding: "4px 8px", fontSize: "0.75rem", borderRadius: "6px", border: isTuningMode ? "1px solid var(--color-danger)" : "1px solid var(--color-primary)", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
+                  >
+                    {isTuningMode ? "Close Tuner" : "🔧 Tune Filters"}
+                  </button>
+                )}
+                <span className="result-badge">{getRuleLabel(rule)}</span>
+              </div>
             </div>
             {/* Show distiller reduction stats when Clean-It-Up was used */}
             {rule === "distill" && distillerStats && (
@@ -745,7 +942,55 @@ function App() {
               </p>
             )}
             
-            <p className="result-content">{processedText}</p>
+            {isTuningMode && activeTemplate ? (
+              <div className="boilerplate-tuner-panel" style={{ animation: "fadeIn 0.2s", marginBottom: "20px" }}>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
+                  <strong>Boilerplate Tuner</strong>: Below are the paragraphs that survived distillation. Click the 🚫 icon next to any paragraph to instantly add it to <strong>{activeTemplate.name}</strong>'s blocked list and hide it.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {processedText.split("\n\n").map((para, idx) => {
+                    const trimmedPara = para.trim();
+                    if (!trimmedPara) return null;
+                    return (
+                      <div 
+                        key={idx} 
+                        className="tuner-row" 
+                        style={{ 
+                          display: "flex", 
+                          justifyContent: "space-between", 
+                          alignItems: "flex-start", 
+                          gap: "12px",
+                          padding: "10px 12px",
+                          background: "var(--bg-app)",
+                          border: "1px solid var(--border-color)",
+                          borderRadius: "10px",
+                          fontSize: "0.95rem"
+                        }}
+                      >
+                        <span style={{ flex: 1, whiteSpace: "pre-wrap" }}>{trimmedPara}</span>
+                        <button
+                          onClick={() => {
+                            // Add first 70 characters of the paragraph to blocked list
+                            const filterPhrase = trimmedPara.length > 70 
+                              ? trimmedPara.substring(0, 70) 
+                              : trimmedPara;
+                            handleAddBlockedPhrase(activeTemplate.id, filterPhrase);
+                            alert(`Added to blocked phrases: "${filterPhrase}..."`);
+                          }}
+                          className="btn-danger-outline"
+                          style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                          title="Block this paragraph"
+                        >
+                          🚫 Mute
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="result-content">{processedText}</p>
+            )}
 
             {/* TTS Settings & Controls */}
             <div className="tts-controls-panel">
@@ -812,6 +1057,196 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* Custom Newsletter Filters Section */}
+        <section className="templates-section" style={{ marginTop: "32px", borderTop: "1px solid var(--border-color)", paddingTop: "24px", textAlign: "left" }}>
+          <div className="history-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <SparklesIcon /> Custom Newsletter Filters ({templates.length}/10)
+            </span>
+          </div>
+
+          <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
+            Create custom templates for newsletters you paste regularly. Add trigger keywords (words that uniquely appear in the newsletter) to auto-detect the template and apply custom filters to strip out specific boilerplate.
+          </p>
+
+          {/* Form to create a new template */}
+          {templates.length < 10 ? (
+            <div className="new-template-form" style={{ display: "flex", gap: "10px", flexWrap: "wrap", background: "var(--bg-app)", padding: "16px", borderRadius: "12px", border: "1px solid var(--border-color)", marginBottom: "20px" }}>
+              <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Template Name</label>
+                <input 
+                  type="text" 
+                  id="new-tpl-name" 
+                  placeholder="e.g. Morning Brew" 
+                  className="modern-select" 
+                  style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Trigger Keyword / Unique Text</label>
+                <input 
+                  type="text" 
+                  id="new-tpl-trigger" 
+                  placeholder="e.g. morningbrew.com" 
+                  className="modern-select" 
+                  style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
+                />
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end" }}>
+                <button 
+                  onClick={() => {
+                    const nameInput = document.getElementById("new-tpl-name");
+                    const triggerInput = document.getElementById("new-tpl-trigger");
+                    if (nameInput && triggerInput) {
+                      const name = nameInput.value.trim();
+                      const trigger = triggerInput.value.trim();
+                      if (!name) {
+                        alert("Please enter a template name.");
+                        return;
+                      }
+                      handleCreateTemplate(name, trigger);
+                      nameInput.value = "";
+                      triggerInput.value = "";
+                    }
+                  }} 
+                  className="btn btn-accent" 
+                  style={{ padding: "10px 16px", fontSize: "0.85rem", height: "40px" }}
+                >
+                  + Add Template
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p style={{ fontSize: "0.85rem", color: "var(--color-danger)", marginBottom: "16px" }}>
+              You have reached the maximum limit of 10 newsletter templates. Delete one to add a new one.
+            </p>
+          )}
+
+          {/* List of existing templates */}
+          {templates.length === 0 ? (
+            <div className="history-empty" style={{ padding: "24px", marginBottom: "20px" }}>
+              No custom newsletter templates created yet. Set one up above!
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
+              {templates.map(tpl => {
+                const isExpanded = selectedTemplateId === tpl.id; // Expand the active/selected template, or let users toggle it
+                return (
+                  <div 
+                    key={tpl.id} 
+                    className="template-card" 
+                    style={{ 
+                      background: "var(--history-item-bg)", 
+                      border: "1px solid var(--border-color)", 
+                      borderRadius: "12px", 
+                      padding: "16px" 
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                      <div>
+                        <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>{tpl.name}</h4>
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                          Auto-detect keyword: <code style={{ background: "var(--bg-app)", padding: "2px 6px", borderRadius: "4px", fontSize: "0.75rem" }}>{tpl.triggerKeyword || "(none)"}</code>
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <button
+                          onClick={() => setSelectedTemplateId(selectedTemplateId === tpl.id ? "none" : tpl.id)}
+                          className="btn-secondary"
+                          style={{ padding: "6px 12px", fontSize: "0.8rem", border: "none", cursor: "pointer" }}
+                        >
+                          {isExpanded ? "Hide Filters" : `Manage Filters (${tpl.blockedPhrases.length})`}
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTemplate(tpl.id)} 
+                          className="btn-danger-outline"
+                          style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
+                        >
+                          <TrashIcon /> Delete
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded details: blocked phrases list */}
+                    {isExpanded && (
+                      <div style={{ marginTop: "16px", borderTop: "1px solid var(--border-color)", paddingTop: "14px", animation: "fadeIn 0.2s" }}>
+                        <h5 style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
+                          Blocked Phrases ({tpl.blockedPhrases.length})
+                        </h5>
+                        
+                        {tpl.blockedPhrases.length === 0 ? (
+                          <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontStyle: "italic", marginBottom: "12px" }}>
+                            No custom filters added yet. Add some below or use the "Tune Filters" button in the result card.
+                          </p>
+                        ) : (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
+                            {tpl.blockedPhrases.map((phrase, pIdx) => (
+                              <span 
+                                key={pIdx} 
+                                style={{ 
+                                  background: "var(--bg-app)", 
+                                  border: "1px solid var(--border-color)", 
+                                  borderRadius: "6px", 
+                                  padding: "4px 8px", 
+                                  fontSize: "0.75rem", 
+                                  display: "inline-flex", 
+                                  alignItems: "center", 
+                                  gap: "6px" 
+                                }}
+                              >
+                                <span>{phrase}</span>
+                                <button 
+                                  onClick={() => handleRemoveBlockedPhrase(tpl.id, phrase)}
+                                  style={{ background: "transparent", border: "none", color: "var(--color-danger)", cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+                                >
+                                  <ClearIcon />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Inline form to add blocked phrase */}
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <input 
+                            type="text" 
+                            id={`add-phrase-${tpl.id}`}
+                            placeholder="Add phrase or line to block..." 
+                            className="modern-select" 
+                            style={{ padding: "6px 12px", fontSize: "0.8rem", background: "var(--bg-input)", flex: 1 }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const input = document.getElementById(`add-phrase-${tpl.id}`);
+                                if (input && input.value.trim()) {
+                                  handleAddBlockedPhrase(tpl.id, input.value.trim());
+                                  input.value = "";
+                                }
+                              }
+                            }}
+                          />
+                          <button 
+                            onClick={() => {
+                              const input = document.getElementById(`add-phrase-${tpl.id}`);
+                              if (input && input.value.trim()) {
+                                handleAddBlockedPhrase(tpl.id, input.value.trim());
+                                input.value = "";
+                              }
+                            }}
+                            className="btn btn-secondary" 
+                            style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {/* History Section */}
         <section className="history-section">
