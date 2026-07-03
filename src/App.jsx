@@ -1512,21 +1512,30 @@ function App() {
                           }}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
-                            <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>{tpl.name}</h4>
-                              <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
-                                Excluded Sections: {tpl.blockedPhrases.length} 
-                                {tpl.isLocked ? (
-                                  <span style={{ color: "var(--color-danger)", display: "inline-flex", alignItems: "center", fontSize: "0.75rem", fontWeight: 600 }}>
-                                    (🔒 Locked)
-                                  </span>
-                                ) : (
-                                  <span style={{ color: "var(--color-success)", display: "inline-flex", alignItems: "center", fontSize: "0.75rem", fontWeight: 600 }}>
-                                    (🔓 Unlocked)
-                                  </span>
-                                )}
-                              </p>
+                              {/* Lock/unlock icon-only toggle — sits right next to the template name */}
+                              <button
+                                onClick={() => handleToggleLockTemplate(tpl.id)}
+                                title={tpl.isLocked ? "Unlock template to allow editing" : "Lock template to prevent accidental edits"}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  padding: "2px 4px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  color: tpl.isLocked ? "var(--color-danger)" : "var(--text-secondary)",
+                                  opacity: 0.85,
+                                  transition: "color 0.2s, opacity 0.2s"
+                                }}
+                              >
+                                {tpl.isLocked ? <LockIcon /> : <UnlockIcon />}
+                              </button>
                             </div>
+                            <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "4px", width: "100%" }}>
+                              {tpl.blockedPhrases.length} section{tpl.blockedPhrases.length !== 1 ? "s" : ""} excluded
+                            </p>
                             <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
                               <button
                                 onClick={() => setSelectedTemplateId(selectedTemplateId === tpl.id ? "none" : tpl.id)}
@@ -1534,14 +1543,6 @@ function App() {
                                 style={{ padding: "6px 12px", fontSize: "0.8rem", border: "none", cursor: "pointer" }}
                               >
                                 {isExpanded ? "Hide Details" : `Manage Sections (${tpl.blockedPhrases.length})`}
-                              </button>
-                              <button
-                                onClick={() => handleToggleLockTemplate(tpl.id)}
-                                className="btn-secondary"
-                                style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
-                                title={tpl.isLocked ? "Unlock template to allow editing" : "Lock template to prevent editing"}
-                              >
-                                {tpl.isLocked ? <><UnlockIcon />Unlock</> : <><LockIcon />Lock</>}
                               </button>
                               <button
                                 onClick={() => handleRenameTemplate(tpl.id, tpl.name)}
