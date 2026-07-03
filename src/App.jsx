@@ -81,11 +81,7 @@ const ClearIcon = () => (
   </svg>
 );
 
-const WrenchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon-svg">
-    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-  </svg>
-);
+
 
 const LockIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon-svg" style={{ marginRight: "4px" }}>
@@ -209,7 +205,6 @@ function App() {
     }
     return "none";
   });
-  const [isTuningMode, setIsTuningMode] = useState(false); // Boilerplate Tuner active state
   const [showScrollTop, setShowScrollTop] = useState(false); // Scroll-to-top floating button visibility
 
   // Scroll listener to show/hide scroll-to-top button
@@ -261,7 +256,6 @@ function App() {
     // If we have active text, immediately switch to Clean-It-Up mode, open the tuner, and scroll to it
     if (clipboardText) {
       setRule("distill");
-      setIsTuningMode(true);
       
       const clean = distillContent(clipboardText, { customBlockedPhrases: [] });
       setProcessedText(clean);
@@ -382,9 +376,6 @@ function App() {
 
   const handleSelectTemplate = (id) => {
     setSelectedTemplateId(id);
-    if (id !== "none") {
-      setIsTuningMode(true);
-    }
     let targetTemplate = null;
     if (id !== "none") {
       targetTemplate = templates.find(t => t.id === id) || null;
@@ -600,7 +591,6 @@ function App() {
 
     // If Clean-It-Up mode is selected, automatically run clean up and open the tuner immediately
     if (rule === "distill") {
-      setIsTuningMode(true);
       const clean = distillContent(text, { customBlockedPhrases: activeTemplate ? activeTemplate.blockedPhrases : [] });
       setProcessedText(clean);
       setDistillerStats(getDistillerStats(text, clean));
@@ -924,11 +914,11 @@ function App() {
               <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                 {activeTemplate ? (
                   <span className="template-badge-applied" title={`Selected Filter: "${activeTemplate.name}"`}>
-                    ✓ Filter Active: <strong>{activeTemplate.name}</strong> ({activeTemplate.blockedPhrases.length} rules)
+                    ✓ Active Template: <strong>{activeTemplate.name}</strong> ({activeTemplate.blockedPhrases.length} excluded sections)
                   </span>
                 ) : (
                   <span className="template-badge-none">
-                    No active filter template (select one in controls row)
+                    No active template (select one in controls row)
                   </span>
                 )}
               </div>
@@ -1042,7 +1032,7 @@ function App() {
                     className="modern-select"
                     style={{ paddingRight: "32px", fontSize: "0.95rem" }}
                   >
-                    <option value="none">Select Newsletter Filter...</option>
+                    <option value="none">Select Newsletter Template...</option>
                     {templates.map(t => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
@@ -1075,102 +1065,12 @@ function App() {
           </div>
         )}
 
-        {/* Audio Player Panel — Always visible if clipboardText exists */}
-        {clipboardText && (
-          <div className="result-card tts-player-card" style={{ marginTop: "20px", animation: "fadeIn 0.3s" }}>
-            <div className="result-header">
-              <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <SpeakerIcon /> <span>Text-to-Speech Player</span>
-              </span>
-              {rule === "distill" && activeTemplate && (
-                <span className="template-badge-applied">
-                  Active Filter: {activeTemplate.name}
-                </span>
-              )}
-            </div>
-
-            {/* TTS Settings & Controls */}
-            <div className="tts-controls-panel" style={{ marginTop: 0 }}>
-              <div className="tts-controls-grid">
-                {/* Voice Selection */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label className="slider-label" style={{ fontSize: "0.8rem" }}>Select Voice</label>
-                  <div className="select-wrapper" style={{ minWidth: "100%" }}>
-                    <select
-                      value={selectedVoice}
-                      onChange={(e) => handleVoiceChange(e.target.value)}
-                      className="modern-select"
-                      style={{ padding: "8px 12px", fontSize: "0.85rem" }}
-                    >
-                      {voices.length === 0 ? (
-                        <option>Default Voice</option>
-                      ) : (
-                        voices.map((v) => (
-                          <option key={v.name} value={v.name}>
-                            {v.name} ({v.lang})
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Speed adjustment slider */}
-                <div className="speed-slider-group">
-                  <div className="slider-label">
-                    <span>Speed / Rate</span>
-                    <span>{rate}x</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.0"
-                    step="0.1"
-                    value={rate}
-                    onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-                    className="modern-slider"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Play/Pause controls actions */}
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "16px" }}>
-              <button onClick={handleSpeakToggle} className="btn btn-accent" style={{ flex: 1, minWidth: "140px" }}>
-                {isPlaying ? (isPaused ? <PlayIcon /> : <PauseIcon />) : <PlayIcon />}
-                <span>{isPlaying ? (isPaused ? " Resume Audio" : " Pause Audio") : " Play Audio"}</span>
-              </button>
-              {isPlaying && (
-                <button onClick={stopSpeech} className="btn btn-secondary">
-                  <StopIcon /> Stop
-                </button>
-              )}
-              {processedText && (
-                <button onClick={handleCopyResult} className="btn btn-secondary" style={{ flex: 1, minWidth: "120px" }}>
-                  <CopyIcon /> Copy Clean Text
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Output & Tuning Sections Panel */}
+        {/* Output & Tuning Sections Panel (Distillery) */}
         {clipboardText && (rule === "distill" || processedText) && (
           <div className="result-card" style={{ marginTop: "20px", animation: "fadeIn 0.3s" }}>
             <div className="result-header">
-              <span>{rule === "distill" ? "Distilled Sections" : "AI Output Result"}</span>
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                {rule === "distill" && activeTemplate && (
-                  <button 
-                    onClick={() => setIsTuningMode(o => !o)} 
-                    className="btn-secondary" 
-                    style={{ padding: "4px 8px", fontSize: "0.75rem", borderRadius: "6px", border: isTuningMode ? "1px solid var(--color-danger)" : "1px solid var(--color-primary)", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
-                  >
-                    {isTuningMode ? "Close Tuner" : <><WrenchIcon /> Tune Filters</>}
-                  </button>
-                )}
-                <span className="result-badge">{getRuleLabel(rule)}</span>
-              </div>
+              <span>{rule === "distill" ? "Distillery Sections" : "AI Output Result"}</span>
+              <span className="result-badge">{getRuleLabel(rule)}</span>
             </div>
 
             {/* Show distiller stats when Clean-It-Up was used */}
@@ -1180,10 +1080,10 @@ function App() {
               </p>
             )}
             
-            {isTuningMode && activeTemplate ? (
+            {rule === "distill" && activeTemplate ? (
               <div className="boilerplate-tuner-panel" style={{ animation: "fadeIn 0.2s" }}>
                 <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
-                  <strong>Boilerplate Tuner</strong>: Below are all the sections. Use <strong>+ Include</strong> to read a section and <strong>X Exclude</strong> to block and cross it out.
+                  <strong>Distillery</strong>: Below are all the newsletter sections. Click <strong>X Exclude</strong> to cross out sections that shouldn't be read, and <strong>+ Include</strong> to restore them.
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {(() => {
@@ -1271,6 +1171,85 @@ function App() {
           </div>
         )}
 
+        {/* Audio Player Panel — Always visible if clipboardText exists */}
+        {clipboardText && (
+          <div className="result-card tts-player-card" style={{ marginTop: "20px", animation: "fadeIn 0.3s" }}>
+            <div className="result-header">
+              <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <SpeakerIcon /> <span>Text-to-Speech Player</span>
+              </span>
+              {rule === "distill" && activeTemplate && (
+                <span className="template-badge-applied">
+                  Active Filter: {activeTemplate.name}
+                </span>
+              )}
+            </div>
+
+            {/* TTS Settings & Controls */}
+            <div className="tts-controls-panel" style={{ marginTop: 0 }}>
+              <div className="tts-controls-grid">
+                {/* Voice Selection */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label className="slider-label" style={{ fontSize: "0.8rem" }}>Select Voice</label>
+                  <div className="select-wrapper" style={{ minWidth: "100%" }}>
+                    <select
+                      value={selectedVoice}
+                      onChange={(e) => handleVoiceChange(e.target.value)}
+                      className="modern-select"
+                      style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                    >
+                      {voices.length === 0 ? (
+                        <option>Default Voice</option>
+                      ) : (
+                        voices.map((v) => (
+                          <option key={v.name} value={v.name}>
+                            {v.name} ({v.lang})
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Speed adjustment slider */}
+                <div className="speed-slider-group">
+                  <div className="slider-label">
+                    <span>Speed / Rate</span>
+                    <span>{rate}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={rate}
+                    onChange={(e) => handleRateChange(parseFloat(e.target.value))}
+                    className="modern-slider"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Play/Pause controls actions */}
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "16px" }}>
+              <button onClick={handleSpeakToggle} className="btn btn-accent" style={{ flex: 1, minWidth: "140px" }}>
+                {isPlaying ? (isPaused ? <PlayIcon /> : <PauseIcon />) : <PlayIcon />}
+                <span>{isPlaying ? (isPaused ? " Resume Audio" : " Pause Audio") : " Play Audio"}</span>
+              </button>
+              {isPlaying && (
+                <button onClick={stopSpeech} className="btn btn-secondary">
+                  <StopIcon /> Stop
+                </button>
+              )}
+              {processedText && (
+                <button onClick={handleCopyResult} className="btn btn-secondary" style={{ flex: 1, minWidth: "120px" }}>
+                  <CopyIcon /> Copy Clean Text
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Custom Newsletter Filters Section */}
         <section className="templates-section" style={{ marginTop: "32px", borderTop: "1px solid var(--border-color)", paddingTop: "24px", textAlign: "left" }}>
           <div className="history-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
@@ -1341,7 +1320,7 @@ function App() {
                       <div>
                         <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>{tpl.name}</h4>
                         <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
-                          Active Rules: {tpl.blockedPhrases.length} line filters 
+                          Excluded Sections: {tpl.blockedPhrases.length} 
                           {tpl.isLocked ? (
                             <span style={{ color: "var(--color-danger)", display: "inline-flex", alignItems: "center", fontSize: "0.75rem", fontWeight: 600 }}>
                               (🔒 Locked)
@@ -1359,7 +1338,7 @@ function App() {
                           className="btn-secondary"
                           style={{ padding: "6px 12px", fontSize: "0.8rem", border: "none", cursor: "pointer" }}
                         >
-                          {isExpanded ? "Hide Filters" : `Manage Filters (${tpl.blockedPhrases.length})`}
+                          {isExpanded ? "Hide Details" : `Manage Sections (${tpl.blockedPhrases.length})`}
                         </button>
                         <button
                           onClick={() => handleToggleLockTemplate(tpl.id)}
@@ -1391,12 +1370,12 @@ function App() {
                     {isExpanded && (
                       <div style={{ marginTop: "16px", borderTop: "1px solid var(--border-color)", paddingTop: "14px", animation: "fadeIn 0.2s" }}>
                         <h5 style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
-                          Blocked Phrases ({tpl.blockedPhrases.length})
+                          Excluded Sections ({tpl.blockedPhrases.length})
                         </h5>
                         
                         {tpl.blockedPhrases.length === 0 ? (
                           <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontStyle: "italic", marginBottom: "12px" }}>
-                            No custom filters added yet. Add some below or use the "Tune Filters" button in the result card.
+                            No sections excluded yet. Use the Distillery above to exclude lines, or add them manually below.
                           </p>
                         ) : (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
@@ -1431,7 +1410,7 @@ function App() {
                           <input 
                             type="text" 
                             id={`add-phrase-${tpl.id}`}
-                            placeholder="Add phrase or line to block..." 
+                            placeholder="Add text or phrase to block section..." 
                             className="modern-select" 
                             style={{ padding: "6px 12px", fontSize: "0.8rem", background: "var(--bg-input)", flex: 1 }}
                             onKeyDown={(e) => {
