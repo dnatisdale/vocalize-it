@@ -1195,6 +1195,11 @@ function App() {
                   <div className="boilerplate-tuner-panel" style={{ animation: "fadeIn 0.2s" }}>
                     <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
                       <strong>Distillery</strong>: Below are all the newsletter sections. Click <strong>X Exclude</strong> to cross out sections that shouldn't be read, and <strong>+ Include</strong> to restore them.
+                      {activeTemplate.isLocked && (
+                        <span style={{ marginLeft: "8px", color: "var(--color-danger)", fontWeight: 600, fontSize: "0.8rem" }}>
+                          🔒 Template is locked — unlock it in the Filters manager below to make changes.
+                        </span>
+                      )}
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                       {(() => {
@@ -1240,22 +1245,30 @@ function App() {
                                 <button
                                   onClick={() => {
                                     if (isLocked) {
-                                      alert("This template is locked. Please unlock it under 'Custom Newsletter Filters' below to make changes.");
+                                      alert("This template is locked. Unlock it in the 'Custom Newsletter Filters' section below to make changes.");
                                       return;
                                     }
                                     handleRemoveBlockedPhrase(activeTemplate.id, matchingPhrase);
                                   }}
                                   className="btn-secondary"
-                                  style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "4px", border: "1px solid var(--color-success)", color: "var(--color-success)", background: "rgba(16, 185, 129, 0.05)" }}
-                                  title={isLocked ? "Template is locked" : "Include this section back in the reading stream (+)"}
+                                  style={{ 
+                                    padding: "4px 8px", fontSize: "0.75rem", 
+                                    cursor: isLocked ? "not-allowed" : "pointer", 
+                                    opacity: isLocked ? 0.45 : 1,
+                                    display: "flex", alignItems: "center", gap: "4px", 
+                                    border: "1px solid var(--color-success)", 
+                                    color: "var(--color-success)", 
+                                    background: "rgba(16, 185, 129, 0.05)" 
+                                  }}
+                                  title={isLocked ? "Unlock the template below to re-include this section" : "Include this section back in the reading stream (+)"}
                                 >
-                                  {isLocked ? "🔒 Locked" : "+ Include"}
+                                  + Include
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => {
                                     if (isLocked) {
-                                      alert("This template is locked. Please unlock it under 'Custom Newsletter Filters' below to make changes.");
+                                      alert("This template is locked. Unlock it in the 'Custom Newsletter Filters' section below to make changes.");
                                       return;
                                     }
                                     const filterPhrase = trimmedPara.length > 70 
@@ -1264,10 +1277,15 @@ function App() {
                                     handleAddBlockedPhrase(activeTemplate.id, filterPhrase);
                                   }}
                                   className="btn-danger-outline"
-                                  style={{ padding: "4px 8px", fontSize: "0.75rem", cursor: isLocked ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "4px" }}
-                                  title={isLocked ? "Template is locked" : "Exclude this section from being read (X)"}
+                                  style={{ 
+                                    padding: "4px 8px", fontSize: "0.75rem", 
+                                    cursor: isLocked ? "not-allowed" : "pointer", 
+                                    opacity: isLocked ? 0.45 : 1,
+                                    display: "flex", alignItems: "center", gap: "4px" 
+                                  }}
+                                  title={isLocked ? "Unlock the template below to exclude this section" : "Exclude this section from being read (X)"}
                                 >
-                                  {isLocked ? "🔒 Locked" : "X Exclude"}
+                                  X Exclude
                                 </button>
                               )}
                             </div>
@@ -1276,6 +1294,7 @@ function App() {
                       })()}
                     </div>
                   </div>
+
                 ) : (
                   <p className="result-content">{processedText}</p>
                 )}
