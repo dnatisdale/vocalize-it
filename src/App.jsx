@@ -84,14 +84,14 @@ const ClearIcon = () => (
 
 
 const LockIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon-svg" style={{ marginRight: "4px" }}>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon-svg" style={{ marginRight: "4px" }}>
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
   </svg>
 );
 
 const UnlockIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon-svg" style={{ marginRight: "4px" }}>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon-svg" style={{ marginRight: "4px" }}>
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
     <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
   </svg>
@@ -193,7 +193,12 @@ function App() {
   const [templates, setTemplates] = useState(() => {
     try {
       const saved = localStorage.getItem("vocalize_newsletter_templates");
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Ensure all templates have isLocked defined (migration for older saved data)
+        return parsed.map(t => ({ isLocked: false, ...t }));
+      }
+      return [];
     } catch {
       return [];
     }
@@ -342,7 +347,8 @@ function App() {
     const newTpl = {
       id: newId,
       name: name.trim() || "Unnamed Template",
-      blockedPhrases: []
+      blockedPhrases: [],
+      isLocked: false
     };
     setTemplates(prev => [...prev, newTpl]);
     
@@ -1570,65 +1576,75 @@ function App() {
                                         fontSize: "0.75rem", 
                                         display: "inline-flex", 
                                         alignItems: "center", 
-                                        gap: "6px" 
+                                        gap: "6px",
+                                        opacity: tpl.isLocked ? 0.6 : 1
                                       }}
                                     >
                                       <span>{phrase}</span>
-                                      <button 
-                                        onClick={() => handleRemoveBlockedPhrase(tpl.id, phrase)}
-                                        style={{ background: "transparent", border: "none", color: "var(--color-danger)", cursor: "pointer", display: "inline-flex", alignItems: "center" }}
-                                      >
-                                        <ClearIcon />
-                                      </button>
+                                      {!tpl.isLocked && (
+                                        <button 
+                                          onClick={() => handleRemoveBlockedPhrase(tpl.id, phrase)}
+                                          style={{ background: "transparent", border: "none", color: "var(--color-danger)", cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+                                          title="Remove this excluded section"
+                                        >
+                                          <ClearIcon />
+                                        </button>
+                                      )}
                                     </span>
                                   ))}
                                 </div>
                               )}
 
                               {/* Inline form to add blocked phrase — controlled input for reliable mobile keyboard support */}
-                              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                <input 
-                                  type="text"
-                                  inputMode="text"
-                                  autoComplete="off"
-                                  placeholder="Add phrase to block section..." 
-                                  value={addPhraseInputs[tpl.id] || ""}
-                                  onChange={(e) => setAddPhraseInputs(prev => ({ ...prev, [tpl.id]: e.target.value }))}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
+                              {tpl.isLocked ? (
+                                <p style={{ fontSize: "0.8rem", color: "var(--color-danger)", fontStyle: "italic", display: "flex", alignItems: "center", gap: "6px" }}>
+                                  <LockIcon /> Template is locked. Click Unlock above to make changes.
+                                </p>
+                              ) : (
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                  <input 
+                                    type="text"
+                                    inputMode="text"
+                                    autoComplete="off"
+                                    placeholder="Add phrase to block section..." 
+                                    value={addPhraseInputs[tpl.id] || ""}
+                                    onChange={(e) => setAddPhraseInputs(prev => ({ ...prev, [tpl.id]: e.target.value }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        const val = (addPhraseInputs[tpl.id] || "").trim();
+                                        if (val) {
+                                          handleAddBlockedPhrase(tpl.id, val);
+                                          setAddPhraseInputs(prev => ({ ...prev, [tpl.id]: "" }));
+                                        }
+                                      }
+                                    }}
+                                    style={{
+                                      flex: 1,
+                                      minWidth: 0,
+                                      padding: "8px 12px",
+                                      fontSize: "0.85rem",
+                                      background: "var(--bg-input)",
+                                      border: "1px solid var(--border-color)",
+                                      borderRadius: "10px",
+                                      color: "var(--text-primary)",
+                                      outline: "none",
+                                      fontFamily: "inherit"
+                                    }}
+                                  />
+                                  <button 
+                                    onClick={() => {
                                       const val = (addPhraseInputs[tpl.id] || "").trim();
                                       if (val) {
                                         handleAddBlockedPhrase(tpl.id, val);
                                         setAddPhraseInputs(prev => ({ ...prev, [tpl.id]: "" }));
                                       }
-                                    }
-                                  }}
-                                  style={{
-                                    flex: 1,
-                                    minWidth: 0,
-                                    padding: "8px 12px",
-                                    fontSize: "0.85rem",
-                                    background: "var(--bg-input)",
-                                    border: "1px solid var(--border-color)",
-                                    borderRadius: "10px",
-                                    color: "var(--text-primary)",
-                                    outline: "none",
-                                    fontFamily: "inherit"
-                                  }}
-                                />
-                                <button 
-                                  onClick={() => {
-                                    const val = (addPhraseInputs[tpl.id] || "").trim();
-                                    if (val) {
-                                      handleAddBlockedPhrase(tpl.id, val);
-                                      setAddPhraseInputs(prev => ({ ...prev, [tpl.id]: "" }));
-                                    }
-                                  }}
-                                  style={{ padding: "8px 16px", fontSize: "0.85rem", flexShrink: 0, whiteSpace: "nowrap", borderRadius: "10px", cursor: "pointer", border: "1px solid var(--border-color)", background: "var(--bg-input)", color: "var(--text-primary)", fontFamily: "inherit", fontWeight: 600 }}
-                                >
-                                  Add
-                                </button>
-                              </div>
+                                    }}
+                                    style={{ padding: "8px 16px", fontSize: "0.85rem", flexShrink: 0, whiteSpace: "nowrap", borderRadius: "10px", cursor: "pointer", border: "1px solid var(--border-color)", background: "var(--bg-input)", color: "var(--text-primary)", fontFamily: "inherit", fontWeight: 600 }}
+                                  >
+                                    Add
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
