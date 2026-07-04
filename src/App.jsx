@@ -1209,7 +1209,7 @@ function App() {
                 {rule === "distill" ? (
                   <div className="boilerplate-tuner-panel" style={{ animation: "fadeIn 0.2s" }}>
                     <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
-                      <strong>Distillery Sections</strong>: Click <strong>X Exclude</strong> to cross out sections that won't be read, and <strong>+ Include</strong> to restore them.
+                      Click the <strong>"X"</strong> means you want to exclude that section, and clicking the <strong>"+"</strong> means you want the section included and read aloud.
                       {activeTemplate ? (
                         activeTemplate.isLocked && (
                           <span style={{ marginLeft: "8px", color: "var(--color-danger)", fontWeight: 600, fontSize: "0.8rem" }}>
