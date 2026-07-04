@@ -301,11 +301,23 @@ export function distillContent(rawText, options = {}) {
   // Apply custom blocked phrases on paragraph level to match the tuner exactly
   let paragraphs = collapsed.split("\n\n");
   if (customBlockedPhrases && customBlockedPhrases.length > 0) {
+    const semanticRules = {
+      "salutation": /^(dear|hi|hello|greetings|hey|to whom it may concern|good morning|good afternoon|good evening)\b[\s\w,.-]*$/i,
+      "greeting": /^(dear|hi|hello|greetings|hey|to whom it may concern|good morning|good afternoon|good evening)\b[\s\w,.-]*$/i,
+      "job title": /^(ceo|cto|cfo|coo|cmo|vp|vice president|director|manager|head of|founder|co-founder|president)\b[\s\w,&-]*$/i,
+      "mailing address": /^(po box|p\.o\. box|\d+\s+[a-z\s]+(st|street|rd|road|ave|avenue|blvd|boulevard|ln|lane|dr|drive|way|court|ct|plaza|sq|square))/i
+    };
+
     paragraphs = paragraphs.filter(para => {
       const lowerPara = para.toLowerCase();
-      return !customBlockedPhrases.some(phrase => 
-        phrase && lowerPara.includes(phrase.toLowerCase())
-      );
+      return !customBlockedPhrases.some(phrase => {
+        if (!phrase) return false;
+        const p = phrase.toLowerCase().trim();
+        if (semanticRules[p]) {
+          return semanticRules[p].test(para.trim());
+        }
+        return lowerPara.includes(p);
+      });
     });
   }
 
