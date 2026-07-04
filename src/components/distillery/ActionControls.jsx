@@ -8,6 +8,11 @@ const DEFAULT_CATEGORIES = [
     description: "Reads the content and assigns 3–5 descriptive topic tags or categories.",
   },
   {
+    value: "listenmode",
+    label: "Listen Mode",
+    description: "Transforms content into a natural audio-first narrative.",
+  },
+  {
     value: "distill",
     label: "Clean-It-Up",
     description: "Instantly strips nav menus, footers, ads, and email boilerplate — no AI needed.",

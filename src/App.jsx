@@ -43,7 +43,7 @@ function App() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const sharedAction = params.get("action");
-      const validRules = ["summarize", "correct", "bulletpoints", "explain", "categorize", "translate_es", "translate_th", "distill"];
+      const validRules = ["summarize", "correct", "bulletpoints", "explain", "categorize", "translate_es", "translate_th", "distill", "listenmode"];
       if (sharedAction && validRules.includes(sharedAction)) return sharedAction;
       const saved = localStorage.getItem("vocalize_default_rule");
       if (saved && validRules.includes(saved)) return saved;
@@ -300,6 +300,7 @@ function App() {
       case "translate_es": return "Spanish (ES)";
       case "translate_th": return "Thai (TH)";
       case "distill": return "Clean-It-Up";
+      case "listenmode": return "Listen Mode";
       default: return "Processed";
     }
   };

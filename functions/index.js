@@ -14,6 +14,38 @@ const PROMPT_REGISTRY = {
   translate_es: (text) => `Please translate the following text into Spanish. Output ONLY the translation without any extra comments, introduction, or formatting:\n\n${text}`,
   translate_th: (text) => `Please translate the following text into Thai. Output ONLY the translation without any extra comments, introduction, or formatting:\n\n${text}`,
   newsletter: (text) => `You are a reading assistant preparing an email newsletter to be read aloud. Your job is to extract ONLY the editorial content — the actual stories, opinions, facts, and insights the author intended to communicate. You MUST silently discard everything else: navigation menus, sponsored content labels, calls-to-action, social media prompts, "view online" links, unsubscribe text, reply/forward headers, mailing addresses, photo captions, and date navigation bars. Do not say what you removed. Write the result as clean, flowing prose with natural paragraph breaks. Do not use bullet points or headers. Make it sound like a human read you the newsletter over coffee.\n\nText:\n${text}`,
+  listenmode: (text) => `You are a reading assistant tasked with transforming the following text into an audio-first listening experience. First, silently determine the likely document type (e.g. Newsletter, Email, News Article, Blog Post, Government Notice, Research Paper, Training Guide, or General Document). 
+
+Then, aggressively remove content with little value when spoken aloud, including:
+- navigation menus
+- social links
+- unsubscribe sections
+- footer content
+- legal disclaimers
+- advertisements
+- sponsorship notices
+- repetitive content
+- boilerplate
+
+You must preserve:
+- main topic
+- dates
+- deadlines
+- action items
+- recommendations
+- decisions
+- important statistics
+- key facts
+
+Rewrite the final result as an audio-friendly narrative designed for listening. 
+REQUIREMENTS:
+- Use a conversational tone and natural speech flow.
+- Use complete sentences only.
+- Do NOT use markdown.
+- Do NOT use bullet points or lists.
+- Do NOT reference the visual layout of the page (e.g. "as shown below").
+
+Text to process:\n\n${text}`,
   default: (text) => `Process the following text: ${text}`
 };
 
