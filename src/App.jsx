@@ -3,7 +3,7 @@ import { Header } from "./components/layout/Header";
 import { InstallBanner } from "./components/layout/InstallBanner";
 import { UpdateBanner } from "./components/layout/UpdateBanner";
 import { InputArea } from "./components/distillery/InputArea";
-import { ActionControls, DEFAULT_CATEGORIES } from "./components/distillery/ActionControls";
+import { ActionControls, AdvancedTools, DEFAULT_CATEGORIES } from "./components/distillery/ActionControls";
 import { ResultCard } from "./components/distillery/ResultCard";
 import { TTSPlayer } from "./components/player/TTSPlayer";
 import { TemplateManager } from "./components/templates/TemplateManager";
@@ -287,7 +287,16 @@ function App() {
 
         {isSettingsOpen && (
           <div className="settings-panel collapsible-drawer" style={{ animation: "slideDown 0.3s ease-out", overflow: "hidden" }}>
-            <h2 style={{ fontSize: "1.5rem", marginBottom: "16px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>Settings</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>
+              <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Settings</h2>
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "1.2rem", cursor: "pointer", padding: "4px 8px" }}
+                title="Close Settings"
+              >
+                ▲
+              </button>
+            </div>
             
             <div className="settings-section" style={{ marginBottom: "24px" }}>
               <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
@@ -404,6 +413,16 @@ function App() {
                   handleAddToBlocklist={handleAddToBlocklist}
                 />
               </div>
+            )}
+
+            {clipboardText && (
+              <AdvancedTools 
+                rule={rule}
+                setRule={setRule}
+                handleDistill={handleDistill}
+                handleProcess={handleProcess}
+                isProcessing={isProcessing}
+              />
             )}
         </div>
       </div>

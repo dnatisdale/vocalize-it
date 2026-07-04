@@ -101,35 +101,48 @@ export function ActionControls({
           × Clear
         </button>
       </div>
+    </div>
+  );
+}
 
-      {/* Advanced Tools Accordion */}
-      <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "8px", marginTop: "8px" }}>
-        <button 
-          onClick={() => setAdvancedOpen(!advancedOpen)}
-          style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.85rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", width: "100%", justifyContent: "center" }}
-        >
-          <span>Advanced Tools</span>
-          <span style={{ transition: "transform 0.2s", transform: advancedOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
-        </button>
+export function AdvancedTools({ rule, setRule, handleDistill, handleProcess, isProcessing }) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
-        {advancedOpen && (
-          <div style={{ marginTop: "16px", display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", animation: "fadeIn 0.2s" }}>
-            {DEFAULT_CATEGORIES.filter(c => c.value !== "listenmode").map(cat => (
-              <button
-                key={cat.value}
-                onClick={() => handleAdvancedToolSelect(cat.value)}
-                disabled={isProcessing}
-                className="btn btn-secondary"
-                style={{ fontSize: "0.85rem", padding: "6px 12px", background: "var(--bg-input)" }}
-                title={cat.description}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+  const handleAdvancedToolSelect = (val) => {
+    setRule(val);
+    if (val === "distill") {
+      handleDistill();
+    } else {
+      handleProcess();
+    }
+  };
 
+  return (
+    <div style={{ padding: "16px", marginTop: "16px" }}>
+      <button 
+        onClick={() => setAdvancedOpen(!advancedOpen)}
+        style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.85rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", width: "100%", justifyContent: "center" }}
+      >
+        <span>Advanced Tools</span>
+        <span style={{ transition: "transform 0.2s", transform: advancedOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+      </button>
+
+      {advancedOpen && (
+        <div style={{ marginTop: "16px", display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", animation: "fadeIn 0.2s" }}>
+          {DEFAULT_CATEGORIES.filter(c => c.value !== "listenmode").map(cat => (
+            <button
+              key={cat.value}
+              onClick={() => handleAdvancedToolSelect(cat.value)}
+              disabled={isProcessing}
+              className="btn btn-secondary"
+              style={{ fontSize: "0.85rem", padding: "6px 12px", background: "var(--bg-input)" }}
+              title={cat.description}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
