@@ -5,9 +5,12 @@ export function InstallBanner({ showInstallBanner, triggerInstallPrompt, dismiss
 
   return (
     <div className="install-banner">
-      <div className="install-banner-text">
-        <h4>Install Vocalize.it</h4>
-        <p>Add to your home screen for quick, offline-capable clipboard processing.</p>
+      <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "16px" }}>
+        <img src="/pwa-192x192.png" alt="Listen Better Icon" style={{ width: "48px", height: "48px", borderRadius: "12px" }} />
+        <div>
+          <h4 style={{ margin: "0 0 4px 0", fontSize: "1.1rem" }}>Install <b>Listen Better</b></h4>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)" }}>Get the full app experience</p>
+        </div>
       </div>
       <div className="install-banner-actions">
         <button className="btn-white" onClick={triggerInstallPrompt}>

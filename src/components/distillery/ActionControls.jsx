@@ -95,7 +95,7 @@ export function ActionControls({
           className="btn btn-primary"
           style={{ flex: 1, padding: "16px", fontSize: "1.2rem", fontWeight: "bold" }}
         >
-          {isProcessing ? "Processing..." : <><HeadphoneIcon />Listen Better</>}
+          {isProcessing ? "Processing..." : <><HeadphoneIcon /><b>Listen Better</b></>}
         </button>
         <button onClick={handleClear} className="btn btn-secondary" style={{ padding: "0 24px" }} title="Clear Text">
           × Clear

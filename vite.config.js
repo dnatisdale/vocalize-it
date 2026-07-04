@@ -22,8 +22,8 @@ export default defineConfig({
     VitePWA({
       registerType: "prompt",
       manifest: {
-        name: "Vocalize.it - Smart Clipboard AI Processor",
-        short_name: "Vocalize",
+        name: "Listen Better",
+        short_name: "Listen Better",
         description: "Smart active processing hub for your clipboard",
         theme_color: "#090d16",
         background_color: "#090d16",

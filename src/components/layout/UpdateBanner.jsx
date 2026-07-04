@@ -5,9 +5,9 @@ export function UpdateBanner({ needRefresh, updateServiceWorker }) {
 
   return (
     <div className="install-banner" style={{ background: "var(--color-primary)", border: "none" }}>
-      <div className="install-banner-text">
-        <h4 style={{ color: "#fff" }}>Update Available!</h4>
-        <p style={{ color: "rgba(255, 255, 255, 0.9)" }}>A newer version of Listen Better is ready.</p>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+        <h4 style={{ margin: 0, color: "white", fontSize: "1.05rem" }}>Update Available</h4>
+        <p style={{ margin: 0, color: "rgba(255, 255, 255, 0.9)", fontSize: "0.85rem" }}>A newer version of <b>Listen Better</b> is ready.</p>
       </div>
       <div className="install-banner-actions">
         <button 

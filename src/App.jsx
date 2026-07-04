@@ -231,7 +231,7 @@ function App() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Vocalize.it",
+          title: "Listen Better",
           text: "Check out this app to quickly clean up newsletters and text for reading!",
           url: window.location.href,
         });
