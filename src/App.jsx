@@ -419,7 +419,7 @@ function App() {
   const handleAddBlockedPhrase = (id, phrase) => {
     const tpl = templates.find(t => t.id === id);
     if (tpl && tpl.isLocked) {
-      alert("This template is locked. Please unlock it under 'Custom Newsletter Filters' below to make changes.");
+      alert("This template is locked. Please unlock it under 'Custom Filters' below to make changes.");
       return;
     }
 
@@ -453,7 +453,7 @@ function App() {
   const handleRemoveBlockedPhrase = (id, phraseToRemove) => {
     const tpl = templates.find(t => t.id === id);
     if (tpl && tpl.isLocked) {
-      alert("This template is locked. Please unlock it under 'Custom Newsletter Filters' below to make changes.");
+      alert("This template is locked. Please unlock it under 'Custom Filters' below to make changes.");
       return;
     }
 
@@ -1452,7 +1452,7 @@ function App() {
               >
                 <div className="result-header" style={{ marginBottom: "16px" }}>
                   <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <SparklesIcon /> Custom Newsletter Filters ({templates.length})
+                    <SparklesIcon /> Custom Filters ({templates.length})
                   </span>
                   {renderLayoutGrip("filters")}
                 </div>
