@@ -1549,11 +1549,10 @@ function App() {
                 {/* Form to create a new template */}
                 <div className="new-template-form" style={{ display: "flex", gap: "10px", flexWrap: "wrap", background: "var(--bg-app)", padding: "16px", borderRadius: "12px", border: "1px solid var(--border-color)", marginBottom: "20px" }}>
                   <div style={{ flex: 1, minWidth: "200px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>Template Name</label>
                     <input 
                       type="text" 
                       id="new-tpl-name" 
-                      placeholder="e.g. Morning Brew" 
+                      placeholder="Template Name" 
                       className="modern-select" 
                       style={{ padding: "8px 12px", background: "var(--bg-input)" }} 
                     />
