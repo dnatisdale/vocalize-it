@@ -1763,7 +1763,7 @@ function App() {
             </span>
             {history.length > 0 && (
               <button onClick={handleClearHistory} className="btn-danger-outline" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                <TrashIcon /> Clear History
+                <TrashIcon /> Clear All
               </button>
             )}
           </div>
