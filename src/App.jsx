@@ -192,7 +192,7 @@ function App() {
   // Templates state (Max 10)
   const defaultStandardTemplate = {
     id: "standard-cleanup-default",
-    name: "Standard Clean-Up",
+    name: "Basic Clean-Up",
     isLocked: true,
     blockedPhrases: [
       "Click here to unsubscribe",
@@ -1597,47 +1597,56 @@ function App() {
                           <div style={{ paddingRight: "32px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>{tpl.name}</h4>
-                              <button
-                                onClick={() => handleToggleLockTemplate(tpl.id)}
-                                title={tpl.isLocked ? "Unlock template to allow editing" : "Lock template to prevent accidental edits"}
-                                style={{
-                                  background: "transparent",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  padding: "2px 4px",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  color: tpl.isLocked ? "var(--color-danger)" : "var(--text-secondary)",
-                                  opacity: 0.85,
-                                  transition: "color 0.2s, opacity 0.2s"
-                                }}
-                              >
-                                {tpl.isLocked ? <LockIcon /> : <UnlockIcon />}
-                              </button>
+                              
+                              {/* Only show lock and details when expanded */}
+                              {isExpanded && (
+                                <button
+                                  onClick={() => handleToggleLockTemplate(tpl.id)}
+                                  title={tpl.isLocked ? "Unlock template to allow editing" : "Lock template to prevent accidental edits"}
+                                  style={{
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    padding: "2px 4px",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    color: tpl.isLocked ? "var(--color-danger)" : "var(--text-secondary)",
+                                    opacity: 0.85,
+                                    transition: "color 0.2s, opacity 0.2s"
+                                  }}
+                                >
+                                  {tpl.isLocked ? <LockIcon /> : <UnlockIcon />}
+                                </button>
+                              )}
                             </div>
-                            <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>
-                              {tpl.blockedPhrases.length} section{tpl.blockedPhrases.length !== 1 ? "s" : ""} excluded
-                            </p>
+                            
+                            {isExpanded && (
+                              <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                                {tpl.blockedPhrases.length} section{tpl.blockedPhrases.length !== 1 ? "s" : ""} excluded
+                              </p>
+                            )}
                           </div>
 
-                          {/* Action buttons — always visible */}
-                          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: "10px" }}>
-                            <button
-                              onClick={() => handleRenameTemplate(tpl.id, tpl.name)}
-                              className="btn-secondary"
-                              style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
-                              title="Rename Template"
-                            >
-                              <EditIcon />Rename
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteTemplate(tpl.id)} 
-                              className="btn-danger-outline"
-                              style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
-                            >
-                              <TrashIcon /> Delete
-                            </button>
-                          </div>
+                          {/* Action buttons — only show when expanded */}
+                          {isExpanded && (
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: "10px" }}>
+                              <button
+                                onClick={() => handleRenameTemplate(tpl.id, tpl.name)}
+                                className="btn-secondary"
+                                style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
+                                title="Rename Template"
+                              >
+                                <EditIcon />Rename
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteTemplate(tpl.id)} 
+                                className="btn-danger-outline"
+                                style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
+                              >
+                                <TrashIcon /> Delete
+                              </button>
+                            </div>
+                          )}
 
                           {/* Expanded details: blocked phrases list */}
                           {isExpanded && (
