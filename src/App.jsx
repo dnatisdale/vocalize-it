@@ -573,8 +573,9 @@ function App() {
   const [selectedVoice, setSelectedVoice] = useState("");
   const [rate, setRate] = useState(() => {
     const saved = parseFloat(localStorage.getItem("vocalize_speech_rate"));
-    return isNaN(saved) ? 0.5 : saved;
+    return isNaN(saved) ? 1.0 : saved;
   });
+  const [isPlayerSettingsExpanded, setIsPlayerSettingsExpanded] = useState(false);
 
   // Initialize history directly from localStorage
   const [history, setHistory] = useState(() => {
@@ -1365,53 +1366,74 @@ function App() {
                         Active Filter: {activeTemplate.name}
                       </span>
                     )}
+                    <button
+                      onClick={() => setIsPlayerSettingsExpanded(prev => !prev)}
+                      title={isPlayerSettingsExpanded ? "Hide Player Settings" : "Show Player Settings"}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "4px",
+                        display: "flex",
+                        alignItems: "center",
+                        color: "var(--text-secondary)",
+                        transition: "color 0.2s",
+                        marginLeft: "4px"
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.25s ease", transform: isPlayerSettingsExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
 
                 {/* TTS Settings & Controls */}
-                <div className="tts-controls-panel" style={{ marginTop: 0 }}>
-                  <div className="tts-controls-grid">
-                    {/* Voice Selection */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <label className="slider-label" style={{ fontSize: "0.8rem" }}>Select Voice</label>
-                      <div className="select-wrapper" style={{ minWidth: "100%" }}>
-                        <select
-                          value={selectedVoice}
-                          onChange={(e) => handleVoiceChange(e.target.value)}
-                          className="modern-select"
-                          style={{ padding: "8px 12px", fontSize: "0.85rem" }}
-                        >
-                          {voices.length === 0 ? (
-                            <option>Default Voice</option>
-                          ) : (
-                            voices.map((v) => (
-                              <option key={v.name} value={v.name}>
-                                {v.name} ({v.lang})
-                              </option>
-                            ))
-                          )}
-                        </select>
+                {isPlayerSettingsExpanded && (
+                  <div className="tts-controls-panel" style={{ marginTop: 0, animation: "fadeIn 0.2s" }}>
+                    <div className="tts-controls-grid">
+                      {/* Voice Selection */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <label className="slider-label" style={{ fontSize: "0.8rem" }}>Select Voice</label>
+                        <div className="select-wrapper" style={{ minWidth: "100%" }}>
+                          <select
+                            value={selectedVoice}
+                            onChange={(e) => handleVoiceChange(e.target.value)}
+                            className="modern-select"
+                            style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                          >
+                            {voices.length === 0 ? (
+                              <option>Default Voice</option>
+                            ) : (
+                              voices.map((v) => (
+                                <option key={v.name} value={v.name}>
+                                  {v.name} ({v.lang})
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Speed adjustment slider */}
-                    <div className="speed-slider-group">
-                      <div className="slider-label">
-                        <span>Speed / Rate</span>
-                        <span>{rate}x</span>
+                      {/* Speed adjustment slider */}
+                      <div className="speed-slider-group">
+                        <div className="slider-label">
+                          <span>Speed / Rate</span>
+                          <span>{rate}x</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="2.0"
+                          step="0.1"
+                          value={rate}
+                          onChange={(e) => handleRateChange(parseFloat(e.target.value))}
+                          className="modern-slider"
+                        />
                       </div>
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="2.0"
-                        step="0.1"
-                        value={rate}
-                        onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-                        className="modern-slider"
-                      />
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Play/Pause controls actions */}
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "16px" }}>
