@@ -251,6 +251,8 @@ function App() {
     }
   });
 
+  const [expandedTemplateId, setExpandedTemplateId] = useState(null);
+
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("vocalize_selected_template_id");
@@ -414,6 +416,7 @@ function App() {
     
     // Automatically select the newly created template
     setSelectedTemplateId(newId);
+    setExpandedTemplateId(newId);
 
     // If we have active text, immediately switch to Clean-It-Up mode, open the tuner, and scroll to it
     if (clipboardText) {
@@ -1572,7 +1575,7 @@ function App() {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
                     {templates.map(tpl => {
-                      const isExpanded = selectedTemplateId === tpl.id;
+                      const isExpanded = expandedTemplateId === tpl.id;
                       return (
                         <div 
                           key={tpl.id} 
@@ -1591,10 +1594,10 @@ function App() {
                               if (isExpanded) {
                                 // Collapsing: lock it automatically
                                 setTemplates(prev => prev.map(t => t.id === tpl.id ? { ...t, isLocked: true } : t));
-                                setSelectedTemplateId("none");
+                                setExpandedTemplateId(null);
                               } else {
                                 // Expanding
-                                setSelectedTemplateId(tpl.id);
+                                setExpandedTemplateId(tpl.id);
                               }
                             }}
                             title={isExpanded ? "Collapse" : "Expand to manage sections"}
