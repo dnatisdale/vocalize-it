@@ -87,8 +87,8 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
 }
 
-/* Background glowing blobs */
-.bg-blobs {
+/* Ambient Background System */
+.ambient-bg {
   position: fixed;
   top: 0;
   left: 0;
@@ -99,34 +99,84 @@ body {
   pointer-events: none;
 }
 
-.blob {
+/* Dark Mode: Deep Ocean Gradients */
+.dark-ambient .ambient-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.15;
-  animation: float 20s infinite alternate;
+  filter: blur(120px);
+  opacity: 0.2;
+  mix-blend-mode: screen;
 }
 
-.blob-1 {
-  top: -10%;
+.dark-ambient .blob-1 {
+  top: -20%;
   left: -10%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, #1e3a8a 0%, transparent 70%);
+  animation: driftSlow 90s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark-ambient .blob-2 {
+  bottom: -20%;
+  right: -10%;
+  width: 70vw;
+  height: 70vw;
+  background: radial-gradient(circle, #0f172a 0%, transparent 70%);
+  animation: driftSlow 120s infinite alternate-reverse cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark-ambient .blob-3 {
+  top: 40%;
+  left: 30%;
   width: 50vw;
   height: 50vw;
-  background: var(--color-primary);
+  background: radial-gradient(circle, #312e81 0%, transparent 70%);
+  opacity: 0.15;
+  animation: driftFloat 150s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.blob-2 {
-  bottom: -10%;
-  right: -10%;
-  width: 45vw;
-  height: 45vw;
-  background: var(--color-secondary);
-  animation-delay: -5s;
+/* Light Mode: Organic Line Art */
+.light-ambient .ambient-svg {
+  width: 100%;
+  height: 100%;
+  opacity: 0.04;
+  color: #64748b; /* text-secondary base */
 }
 
-@keyframes float {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(50px, 30px) scale(1.1); }
+.light-ambient .wave-path {
+  transform-origin: center;
+}
+
+.light-ambient .path-1 { animation: waveDrift 80s infinite alternate ease-in-out; }
+.light-ambient .path-2 { animation: waveDrift 100s infinite alternate-reverse ease-in-out; }
+.light-ambient .path-3 { animation: waveDrift 120s infinite alternate ease-in-out; }
+.light-ambient .path-4 { animation: waveDrift 140s infinite alternate-reverse ease-in-out; }
+.light-ambient .path-5 { animation: waveDrift 160s infinite alternate ease-in-out; }
+
+/* CSS Transforms for hardware acceleration */
+@keyframes driftSlow {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(8%, 12%, 0) scale(1.05); }
+}
+
+@keyframes driftFloat {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  100% { transform: translate3d(-10%, 5%, 0) rotate(5deg); }
+}
+
+@keyframes waveDrift {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(5%, 3%, 0); }
+}
+
+/* Accessibility: Respect motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .dark-ambient .ambient-blob,
+  .light-ambient .wave-path {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 /* App Container and Card */

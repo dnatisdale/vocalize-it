@@ -12,6 +12,7 @@ import { useSpeech } from "./hooks/useSpeech";
 import { useTemplates } from "./hooks/useTemplates";
 import { usePWA } from "./hooks/usePWA";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import { AmbientBackground } from "./components/layout/AmbientBackground";
 
 import { distillContent, getDistillerStats, advancedOfflineDistill } from "./utils/contentDistiller";
 import { processWithGemini } from "./services/aiService";
@@ -272,10 +273,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className="bg-blobs">
-        <div className="blob blob-1"></div>
-        <div className="blob blob-2"></div>
-      </div>
+      <AmbientBackground theme={theme} />
 
       <UpdateBanner needRefresh={needRefresh} updateServiceWorker={updateServiceWorker} />
       <InstallBanner 
