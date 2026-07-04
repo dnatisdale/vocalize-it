@@ -13,7 +13,7 @@ import { useTemplates } from "./hooks/useTemplates";
 import { usePWA } from "./hooks/usePWA";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 
-import { distillContent, getDistillerStats } from "./utils/contentDistiller";
+import { distillContent, getDistillerStats, advancedOfflineDistill } from "./utils/contentDistiller";
 import { processWithGemini } from "./services/aiService";
 
 import "./App.css";
@@ -26,7 +26,10 @@ function App() {
   // PWA & Storage Hooks
   const { showInstallBanner, triggerInstallPrompt, dismissInstallBanner, needRefresh, updateServiceWorker } = usePWA();
   const [theme, setTheme] = useLocalStorage("vocalize_theme", "dark");
+  // eslint-disable-next-line no-unused-vars
   const [history, setHistory] = useLocalStorage("vocalize_history", []);
+  const [blocklist, setBlocklist] = useLocalStorage("vocalize_blocklist", []);
+  const [isBlocklistOpen, setIsBlocklistOpen] = useState(false);
 
   // Application State
   const [clipboardText, setClipboardText] = useState(() => {
@@ -39,6 +42,7 @@ function App() {
   const [processedText, setProcessedText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [distillerStats, setDistillerStats] = useState("");
+  const [processingModeFeedback, setProcessingModeFeedback] = useState("");
   
   const [rule, setRule] = useState(() => {
     if (typeof window !== "undefined") {
@@ -49,7 +53,7 @@ function App() {
       const saved = localStorage.getItem("vocalize_default_rule");
       if (saved && validRules.includes(saved)) return saved;
     }
-    return "categorize";
+    return "listenmode";
   });
 
   const [categoryOrder, setCategoryOrder] = useState(() => {
@@ -78,83 +82,7 @@ function App() {
     localStorage.setItem("vocalize_cat_order", JSON.stringify(categoryOrder.map((c) => c.value)));
   }, [categoryOrder]);
 
-  // Layout State
-  const [layoutOrder, setLayoutOrder] = useLocalStorage("vocalize_layout_order", ["distillery", "player", "filters"]);
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [draggableSection, setDraggableSection] = useState(null);
-  
-  const handleLayoutDragStart = (e, index) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleLayoutDragOver = (e, index) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index) return;
-    const updated = [...layoutOrder];
-    const item = updated[draggedIndex];
-    updated.splice(draggedIndex, 1);
-    updated.splice(index, 0, item);
-    setLayoutOrder(updated);
-    setDraggedIndex(index);
-  };
-
-  const handleLayoutDragEnd = () => {
-    setDraggedIndex(null);
-    setDraggableSection(null);
-  };
-
-  const handleMoveSection = (index, direction) => {
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= layoutOrder.length) return;
-    const updated = [...layoutOrder];
-    const temp = updated[index];
-    updated[index] = updated[newIndex];
-    updated[newIndex] = temp;
-    setLayoutOrder(updated);
-  };
-
-  const renderLayoutGrip = (sectionId) => {
-    const index = layoutOrder.indexOf(sectionId);
-    if (index === -1) return null;
-    return (
-      <div 
-        className="layout-grip-controls" 
-        style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "12px" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={() => handleMoveSection(index, -1)}
-          disabled={index === 0}
-          className="btn-layout-arrow"
-          style={{ background: "transparent", border: "none", cursor: index === 0 ? "not-allowed" : "pointer", opacity: index === 0 ? 0.3 : 0.7, padding: "2px 4px", color: "var(--text-primary)", fontSize: "0.8rem", display: "inline-flex", alignItems: "center" }}
-          title="Move section up"
-        >
-          ▲
-        </button>
-        <span 
-          style={{ cursor: "grab", opacity: 0.7, display: "inline-flex", alignItems: "center" }}
-          title="Drag and hold to rearrange"
-          onMouseEnter={() => setDraggableSection(sectionId)}
-          onMouseLeave={() => setDraggableSection(null)}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="icon-svg">
-            <line x1="4" y1="9"  x2="20" y2="9"/>
-            <line x1="4" y1="15" x2="20" y2="15"/>
-          </svg>
-        </span>
-        <button
-          onClick={() => handleMoveSection(index, 1)}
-          disabled={index === layoutOrder.length - 1}
-          className="btn-layout-arrow"
-          style={{ background: "transparent", border: "none", cursor: index === layoutOrder.length - 1 ? "not-allowed" : "pointer", opacity: index === layoutOrder.length - 1 ? 0.3 : 0.7, padding: "2px 4px", color: "var(--text-primary)", fontSize: "0.8rem", display: "inline-flex", alignItems: "center" }}
-          title="Move section down"
-        >
-          ▼
-        </button>
-      </div>
-    );
-  };
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Theme Sync
   useEffect(() => {
@@ -194,7 +122,7 @@ function App() {
     const tpl = overrideTemplate !== null ? overrideTemplate : templateState.activeTemplate;
     const blockedPhrases = tpl ? tpl.blockedPhrases : [];
 
-    const clean = distillContent(textToDistill, { customBlockedPhrases: blockedPhrases });
+    const clean = distillContent(textToDistill, { customBlockedPhrases: blockedPhrases, blocklist });
     const stats = getDistillerStats(textToDistill, clean);
     
     setProcessedText(clean);
@@ -209,16 +137,41 @@ function App() {
       timestamp: new Date().toLocaleString(),
     };
     setHistory(prev => [newHistoryItem, ...(prev || []).slice(0, 9)]);
-  }, [clipboardText, templateState.activeTemplate, speech, setHistory]);
+  }, [clipboardText, templateState.activeTemplate, speech, setHistory, blocklist]);
 
   const handleProcess = useCallback(async () => {
     if (!clipboardText) return;
     setIsProcessing(true);
     speech.stopSpeech();
+    setProcessingModeFeedback("");
 
     try {
-      const resultText = await processWithGemini(clipboardText, rule);
+      // Phase O5: Hybrid Processing Decision Tree
+      const offlineResult = advancedOfflineDistill(clipboardText, { blocklist });
+      const { type, confidence } = offlineResult.classification;
+      const offlineEligibleTypes = ["email", "newsletter", "prayer request", "devotional"];
+      
+      let resultText = "";
+
+      if (confidence > 0.80 && offlineEligibleTypes.includes(type)) {
+        // Process offline instantly
+        resultText = offlineResult.cleanedText;
+        setProcessingModeFeedback("Processed Offline ⚡");
+      } else {
+        // Two-pass pipeline: Auto pre-clean before sending to AI
+        const preClean = distillContent(clipboardText, { blocklist });
+        resultText = await processWithGemini(preClean, rule);
+        setProcessingModeFeedback("Enhanced with AI ✨");
+      }
+      
       setProcessedText(resultText);
+
+      // Auto-play for the "Listen Better" primary workflow
+      if (rule === "listenmode" || rule === "distill") {
+        setTimeout(() => {
+          speech.handleSpeakToggle(resultText);
+        }, 100);
+      }
       
       const newHistoryItem = {
         id: generateHistoryId(),
@@ -233,20 +186,31 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [clipboardText, rule, speech, setHistory]);
+  }, [clipboardText, rule, speech, setHistory, blocklist]);
 
   const handleTextPaste = useCallback((text) => {
     setClipboardText(text);
     speech.stopSpeech();
     if (rule === "distill") {
-      const clean = distillContent(text, { customBlockedPhrases: templateState.activeTemplate ? templateState.activeTemplate.blockedPhrases : [] });
+      const clean = distillContent(text, { customBlockedPhrases: templateState.activeTemplate ? templateState.activeTemplate.blockedPhrases : [], blocklist });
       setProcessedText(clean);
       setDistillerStats(getDistillerStats(text, clean));
     } else {
       setProcessedText("");
       setDistillerStats("");
     }
-  }, [rule, templateState.activeTemplate, speech]);
+  }, [rule, templateState.activeTemplate, speech, blocklist]);
+
+  const handleAddToBlocklist = useCallback((line) => {
+    const norm = line.trim();
+    if (norm && !blocklist.includes(norm)) {
+      setBlocklist(prev => [...prev, norm]);
+    }
+  }, [blocklist, setBlocklist]);
+
+  const handleRemoveFromBlocklist = useCallback((line) => {
+    setBlocklist(prev => prev.filter(b => b !== line));
+  }, [setBlocklist]);
 
   const handlePaste = async () => {
     try {
@@ -325,56 +289,140 @@ function App() {
           theme={theme} 
           toggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} 
           handleShareApp={handleShareApp} 
+          toggleSettings={() => setIsSettingsOpen(!isSettingsOpen)}
         />
 
-        <InputArea 
-          clipboardText={clipboardText}
-          setClipboardText={setClipboardText}
-          handlePaste={handlePaste}
-          handleTextPaste={handleTextPaste}
-        />
+        {isSettingsOpen ? (
+          <div className="settings-panel" style={{ animation: "fadeIn 0.2s" }}>
+            <h2 style={{ fontSize: "1.5rem", marginBottom: "16px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>Settings</h2>
+            
+            <div className="settings-section" style={{ marginBottom: "24px" }}>
+              <h3 style={{ fontSize: "1.1rem", marginBottom: "12px" }}>Voice Configuration</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label className="slider-label" style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Select Voice</label>
+                <div className="select-wrapper" style={{ minWidth: "100%" }}>
+                  <select
+                    value={speech.selectedVoice}
+                    onChange={(e) => speech.handleVoiceChange(e.target.value, processedText || clipboardText)}
+                    className="modern-select"
+                    style={{ padding: "10px 14px", fontSize: "0.95rem" }}
+                  >
+                    {speech.voices.length === 0 ? (
+                      <option>Default Voice</option>
+                    ) : (
+                      speech.voices.map((v) => (
+                        <option key={v.name} value={v.name}>
+                          {v.name} ({v.lang}) {v.localService ? "[Offline]" : "[Cloud]"}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
 
-        {clipboardText && (
-          <ActionControls 
-            rule={rule}
-            setRule={setRule}
-            handleDistill={handleDistill}
-            handleProcess={handleProcess}
-            handleClear={handleClear}
-            isProcessing={isProcessing}
-            templates={templateState.templates}
-            selectedTemplateId={templateState.selectedTemplateId}
-            handleSelectTemplate={templateState.handleSelectTemplate}
-            categoryOrder={categoryOrder}
-            setCategoryOrder={setCategoryOrder}
-          />
-        )}
+              <div className="speed-slider-group" style={{ marginTop: "16px" }}>
+                <div className="slider-label">
+                  <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Speed / Rate</span>
+                  <span>{speech.rate}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.05"
+                  value={speech.rate}
+                  onChange={(e) => speech.handleRateChange(parseFloat(e.target.value), processedText || clipboardText)}
+                  className="modern-slider"
+                />
+                <div style={{ display: "flex", gap: "8px", marginTop: "12px", justifyContent: "space-between" }}>
+                  <button 
+                    onClick={() => speech.handleRateChange(0.85, processedText || clipboardText)}
+                    style={{ flex: 1, fontSize: "0.85rem", padding: "6px 0", background: speech.rate === 0.85 ? "var(--color-primary)" : "var(--bg-input)", color: speech.rate === 0.85 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "6px", cursor: "pointer" }}
+                  >Slow</button>
+                  <button 
+                    onClick={() => speech.handleRateChange(1.0, processedText || clipboardText)}
+                    style={{ flex: 1, fontSize: "0.85rem", padding: "6px 0", background: speech.rate === 1.0 ? "var(--color-primary)" : "var(--bg-input)", color: speech.rate === 1.0 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "6px", cursor: "pointer" }}
+                  >Normal</button>
+                  <button 
+                    onClick={() => speech.handleRateChange(1.1, processedText || clipboardText)}
+                    style={{ flex: 1, fontSize: "0.85rem", padding: "6px 0", background: speech.rate === 1.1 ? "var(--color-primary)" : "var(--bg-input)", color: speech.rate === 1.1 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "6px", cursor: "pointer" }}
+                  >Podcast</button>
+                  <button 
+                    onClick={() => speech.handleRateChange(1.25, processedText || clipboardText)}
+                    style={{ flex: 1, fontSize: "0.85rem", padding: "6px 0", background: speech.rate === 1.25 ? "var(--color-primary)" : "var(--bg-input)", color: speech.rate === 1.25 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "6px", cursor: "pointer" }}
+                  >Fast</button>
+                </div>
+              </div>
+            </div>
 
-        {layoutOrder.map((sectionId, index) => {
-          if (sectionId === "distillery") {
-            return (
-              <ResultCard 
-                key="distillery"
+            <TemplateManager 
+              templates={templateState.templates}
+              handleCreateTemplate={templateState.handleCreateTemplate}
+              handleDeleteTemplate={templateState.handleDeleteTemplate}
+              handleToggleLockTemplate={templateState.handleToggleLockTemplate}
+              handleRenameTemplate={templateState.handleRenameTemplate}
+              handleAddBlockedPhrase={templateState.handleAddBlockedPhrase}
+              handleRemoveBlockedPhrase={templateState.handleRemoveBlockedPhrase}
+              renderLayoutGrip={() => null}
+              isDragged={false}
+              onDragStart={() => {}}
+              onDragOver={() => {}}
+              onDragEnd={() => {}}
+            />
+
+            <div className="settings-section" style={{ marginTop: "24px", background: "var(--bg-card)", padding: "16px", borderRadius: "12px", border: "1px solid var(--border-color)" }}>
+              <div 
+                onClick={() => setIsBlocklistOpen(!isBlocklistOpen)}
+                style={{ display: "flex", justifyContent: "space-between", cursor: "pointer", fontWeight: "bold" }}
+              >
+                <span>Global Ignored Phrases ({blocklist.length})</span>
+                <span>{isBlocklistOpen ? "▲" : "▼"}</span>
+              </div>
+              {isBlocklistOpen && (
+                <div style={{ marginTop: "12px" }}>
+                  {blocklist.length === 0 ? (
+                    <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>No phrases ignored globally. Click <b>× Ignore</b> on any result paragraph to ignore it in the future.</p>
+                  ) : (
+                    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {blocklist.map((item, i) => (
+                        <li key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-input)", padding: "8px 12px", borderRadius: "8px", fontSize: "0.9rem" }}>
+                          <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{item}</span>
+                          <button onClick={() => handleRemoveFromBlocklist(item)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--error-color)" }}>✖</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <InputArea 
+              clipboardText={clipboardText}
+              setClipboardText={setClipboardText}
+              handlePaste={handlePaste}
+              handleTextPaste={handleTextPaste}
+            />
+
+            {clipboardText && (
+              <ActionControls 
                 rule={rule}
-                clipboardText={clipboardText}
-                processedText={processedText}
-                distillerStats={distillerStats}
-                activeTemplate={templateState.activeTemplate}
-                handleRemoveBlockedPhrase={templateState.handleRemoveBlockedPhrase}
-                handleAddBlockedPhrase={templateState.handleAddBlockedPhrase}
-                renderLayoutGrip={renderLayoutGrip}
-                isDragged={draggedIndex === index}
-                onDragStart={(e) => handleLayoutDragStart(e, index)}
-                onDragOver={(e) => handleLayoutDragOver(e, index)}
-                onDragEnd={handleLayoutDragEnd}
-                getRuleLabel={getRuleLabel}
+                setRule={setRule}
+                handleDistill={handleDistill}
+                handleProcess={handleProcess}
+                handleClear={handleClear}
+                isProcessing={isProcessing}
+                templates={templateState.templates}
+                selectedTemplateId={templateState.selectedTemplateId}
+                handleSelectTemplate={templateState.handleSelectTemplate}
+                categoryOrder={categoryOrder}
+                setCategoryOrder={setCategoryOrder}
               />
-            );
-          }
-          if (sectionId === "player") {
-            return (
+            )}
+
+            {processedText && (
               <TTSPlayer 
-                key="player"
                 clipboardText={clipboardText}
                 processedText={processedText}
                 voices={speech.voices}
@@ -386,36 +434,38 @@ function App() {
                 stopSpeech={speech.stopSpeech}
                 handleVoiceChange={speech.handleVoiceChange}
                 handleRateChange={speech.handleRateChange}
-                renderLayoutGrip={renderLayoutGrip}
-                isDragged={draggedIndex === index}
-                onDragStart={(e) => handleLayoutDragStart(e, index)}
-                onDragOver={(e) => handleLayoutDragOver(e, index)}
-                onDragEnd={handleLayoutDragEnd}
+                renderLayoutGrip={() => null}
+                isDragged={false}
+                onDragStart={() => {}}
+                onDragOver={() => {}}
+                onDragEnd={() => {}}
                 handleCopyResult={handleCopyResult}
               />
-            );
-          }
-          if (sectionId === "filters") {
-            return (
-              <TemplateManager 
-                key="filters"
-                templates={templateState.templates}
-                handleCreateTemplate={templateState.handleCreateTemplate}
-                handleDeleteTemplate={templateState.handleDeleteTemplate}
-                handleToggleLockTemplate={templateState.handleToggleLockTemplate}
-                handleRenameTemplate={templateState.handleRenameTemplate}
-                handleAddBlockedPhrase={templateState.handleAddBlockedPhrase}
-                handleRemoveBlockedPhrase={templateState.handleRemoveBlockedPhrase}
-                renderLayoutGrip={renderLayoutGrip}
-                isDragged={draggedIndex === index}
-                onDragStart={(e) => handleLayoutDragStart(e, index)}
-                onDragOver={(e) => handleLayoutDragOver(e, index)}
-                onDragEnd={handleLayoutDragEnd}
-              />
-            );
-          }
-          return null;
-        })}
+            )}
+
+            {processedText && (
+              <div style={{ marginTop: "24px" }}>
+                <ResultCard 
+                  rule={rule}
+                  clipboardText={clipboardText}
+                  processedText={processedText}
+                  distillerStats={distillerStats}
+                  processingModeFeedback={processingModeFeedback}
+                  activeTemplate={templateState.activeTemplate}
+                  handleRemoveBlockedPhrase={templateState.handleRemoveBlockedPhrase}
+                  handleAddBlockedPhrase={templateState.handleAddBlockedPhrase}
+                  renderLayoutGrip={() => null}
+                  isDragged={false}
+                  onDragStart={() => {}}
+                  onDragOver={() => {}}
+                  onDragEnd={() => {}}
+                  getRuleLabel={getRuleLabel}
+                  handleAddToBlocklist={handleAddToBlocklist}
+                />
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <div style={{ textAlign: "center", marginTop: "24px", paddingBottom: "24px", color: "var(--text-secondary)", fontSize: "0.8rem", wordBreak: "break-all", opacity: 0.7 }}>

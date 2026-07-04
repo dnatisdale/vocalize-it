@@ -4,6 +4,8 @@ import {
   LINE_CLEAN_RULES,
   SEMANTIC_RULES
 } from "./distillerRules";
+import { CLEANERS } from "./cleaners";
+import { classifyDocument } from "./documentClassifier";
 
 /**
  * distillContent(rawText: string, options?: object): string
@@ -18,7 +20,7 @@ import {
  * @returns {string} - Cleaned text with \n\n paragraph spacing for TTS.
  */
 export function distillContent(rawText, options = {}) {
-  const { debug = false, disabledRules = [], customBlockedPhrases = [] } = options;
+  const { debug = false, disabledRules = [], customBlockedPhrases = [], blocklist = [] } = options;
 
   if (!rawText || typeof rawText !== "string") return "";
 
@@ -44,15 +46,26 @@ export function distillContent(rawText, options = {}) {
     }
     let dropped = false;
 
-    // ── STEP 2b: Check LINE_DROP_RULES ───────────────────────────────────────
-    for (const rule of LINE_DROP_RULES) {
-      if (disabledRules.includes(rule.label)) continue;
-      if (rule.test(trimmed)) {
-        if (debug) console.log(`[distiller] DROP [${rule.label}]:`, JSON.stringify(trimmed));
-        dropped = true;
-        break;
+    // ── STEP 2b: Check LINE_DROP_RULES & user blocklist ──────────────────────
+    // 1. Check user blocklist (exact normalized match)
+    const normalizedLine = trimmed.toLowerCase();
+    if (blocklist.some(b => b.toLowerCase() === normalizedLine)) {
+      if (debug) console.log(`[distiller] DROP [blocklist]:`, JSON.stringify(trimmed));
+      dropped = true;
+    }
+
+    if (!dropped) {
+      // 2. Check standard rules
+      for (const rule of LINE_DROP_RULES) {
+        if (disabledRules.includes(rule.label)) continue;
+        if (rule.test(trimmed)) {
+          if (debug) console.log(`[distiller] DROP [${rule.label}]:`, JSON.stringify(trimmed));
+          dropped = true;
+          break;
+        }
       }
     }
+
     if (dropped) continue;
 
     // ── STEP 2b: Apply LINE_CLEAN_RULES (partial trimming) ───────────────────
@@ -116,4 +129,70 @@ export function getDistillerStats(rawText, cleanText) {
   return removed > 0
     ? `Stripped ${removed} boilerplate lines (${pct}% reduction)`
     : "No boilerplate detected";
+}
+
+/**
+ * advancedOfflineDistill(rawText: string, options?: object): object
+ * 
+ * Runs text through all specialized local cleaners and returns the best result.
+ */
+export function advancedOfflineDistill(rawText, options = {}) {
+  if (!rawText) return { cleanedText: "", removedSections: [], documentHints: [] };
+
+  let bestClean = rawText;
+  let bestRemoved = [];
+  const hints = [];
+  let highestScore = 0;
+
+  for (const [cleanerName, cleaner] of Object.entries(CLEANERS)) {
+    const result = cleaner.clean(rawText);
+    if (result.score > 0) {
+      hints.push(cleanerName);
+      if (result.score > highestScore) {
+        highestScore = result.score;
+        bestClean = result.cleanedText;
+        bestRemoved = result.removedSections;
+      }
+    }
+  }
+
+  // If no specific cleaner scored high enough, fallback to basic text processing
+  if (highestScore === 0) {
+    bestClean = rawText;
+  }
+
+  // Then pass through the existing general distiller for basic text cleanup
+  const finalCleanedText = distillContent(bestClean, options);
+
+  const classification = classifyDocument(rawText);
+
+  return {
+    cleanedText: finalCleanedText,
+    removedSections: bestRemoved,
+    documentHints: hints,
+    classification
+  };
+}
+
+/**
+ * benchmarkCleaners(rawText: string): object
+ * 
+ * Runs performance benchmarks for each modular cleaner.
+ */
+export function benchmarkCleaners(rawText) {
+  if (!rawText) return {};
+  
+  const benchmarks = {};
+  
+  // Use performance.now() if available (browser), otherwise fallback to Date.now()
+  const getNow = () => typeof performance !== "undefined" ? performance.now() : Date.now();
+
+  for (const [cleanerName, cleaner] of Object.entries(CLEANERS)) {
+    const start = getNow();
+    cleaner.clean(rawText);
+    const end = getNow();
+    benchmarks[cleanerName] = (end - start).toFixed(2) + "ms";
+  }
+
+  return benchmarks;
 }

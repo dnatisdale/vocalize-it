@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { GripIcon, SparklesIcon, ClearIcon } from "../shared/Icons";
+import { GripIcon, SparklesIcon, ClearIcon, HeadphoneIcon } from "../shared/Icons";
 
 const DEFAULT_CATEGORIES = [
   {
@@ -11,6 +11,11 @@ const DEFAULT_CATEGORIES = [
     value: "listenmode",
     label: "Listen Mode",
     description: "Transforms content into a natural audio-first narrative.",
+  },
+  {
+    value: "newsletter",
+    label: "🗞️ Newsletter Digest",
+    description: "Strips everything except the main editorial content.",
   },
   {
     value: "distill",
@@ -62,180 +67,69 @@ export function ActionControls({
   categoryOrder,
   setCategoryOrder
 }) {
-  const [catDropdownOpen, setCatDropdownOpen] = useState(false);
-  const dragIndexRef = useRef(null);
-  const catDropdownRef = useRef(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (catDropdownRef.current && !catDropdownRef.current.contains(e.target)) {
-        setCatDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
-
-  const handleDragStart = (index) => {
-    dragIndexRef.current = index;
+  const onListenBetter = () => {
+    // Force listenmode processing
+    setRule("listenmode");
+    handleProcess();
   };
 
-  const handleDragOver = (e, index) => {
-    e.preventDefault();
-    const from = dragIndexRef.current;
-    if (from === null || from === index) return;
-    const updated = [...categoryOrder];
-    const [moved] = updated.splice(from, 1);
-    updated.splice(index, 0, moved);
-    dragIndexRef.current = index;
-    setCategoryOrder(updated);
-  };
-
-  const handleDragEnd = () => {
-    dragIndexRef.current = null;
-  };
-
-  const handleCategorySelect = (cat) => {
-    if (cat.value === "distill") {
-      setRule("distill");
+  const handleAdvancedToolSelect = (val) => {
+    setRule(val);
+    if (val === "distill") {
       handleDistill();
     } else {
-      setRule(cat.value);
+      handleProcess();
     }
-    setCatDropdownOpen(false);
   };
 
   return (
-    <div className="controls-row" style={{ marginTop: "16px" }}>
-      {/* Custom reorderable category dropdown */}
-      <div className="select-wrapper cat-dropdown-wrapper" ref={catDropdownRef} style={{ position: "relative" }}>
+    <div className="controls-row" style={{ marginTop: "24px", flexDirection: "column", gap: "16px", alignItems: "stretch" }}>
+      
+      {/* Primary Action */}
+      <div style={{ display: "flex", gap: "12px" }}>
         <button
-          className="modern-select cat-dropdown-trigger"
-          onClick={() => setCatDropdownOpen((o) => !o)}
-          aria-haspopup="listbox"
-          aria-expanded={catDropdownOpen}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", width: "100%", cursor: "pointer" }}
+          onClick={onListenBetter}
+          disabled={isProcessing}
+          className="btn btn-primary"
+          style={{ flex: 1, padding: "16px", fontSize: "1.2rem", fontWeight: "bold" }}
         >
-          <span>{categoryOrder.find((c) => c.value === rule)?.label ?? "Summarize"}</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform 0.2s", transform: catDropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
+          {isProcessing ? "Processing..." : <><HeadphoneIcon />Listen Better</>}
+        </button>
+        <button onClick={handleClear} className="btn btn-secondary" style={{ padding: "0 24px" }} title="Clear Text">
+          × Clear
+        </button>
+      </div>
+
+      {/* Advanced Tools Accordion */}
+      <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "8px", marginTop: "8px" }}>
+        <button 
+          onClick={() => setAdvancedOpen(!advancedOpen)}
+          style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.85rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", width: "100%", justifyContent: "center" }}
+        >
+          <span>Advanced Tools</span>
+          <span style={{ transition: "transform 0.2s", transform: advancedOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
         </button>
 
-        {catDropdownOpen && (
-          <ul
-            role="listbox"
-            className="cat-dropdown-list"
-            style={{
-              position: "absolute",
-              top: "calc(100% + 6px)",
-              left: 0,
-              zIndex: 200,
-              minWidth: "100%",
-              background: "var(--bg-input)",
-              isolation: "isolate",
-              border: "1px solid var(--border-color)",
-              borderRadius: "12px",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-              padding: "6px",
-              margin: 0,
-              listStyle: "none",
-              animation: "fadeIn 0.15s",
-            }}
-          >
-            {categoryOrder.map((cat, index) => (
-              <li
+        {advancedOpen && (
+          <div style={{ marginTop: "16px", display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", animation: "fadeIn 0.2s" }}>
+            {DEFAULT_CATEGORIES.filter(c => c.value !== "listenmode").map(cat => (
+              <button
                 key={cat.value}
-                role="option"
-                aria-selected={rule === cat.value}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  padding: "9px 12px",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  background: rule === cat.value ? "var(--color-primary)" : "var(--bg-input)",
-                  color: rule === cat.value ? "#fff" : "var(--text-primary)",
-                  fontWeight: rule === cat.value ? 600 : 400,
-                  fontSize: "0.9rem",
-                  userSelect: "none",
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  if (rule !== cat.value) e.currentTarget.style.background = "var(--border-color)";
-                }}
-                onMouseLeave={(e) => {
-                  if (rule !== cat.value) e.currentTarget.style.background = "transparent";
-                }}
+                onClick={() => handleAdvancedToolSelect(cat.value)}
+                disabled={isProcessing}
+                className="btn btn-secondary"
+                style={{ fontSize: "0.85rem", padding: "6px 12px", background: "var(--bg-input)" }}
+                title={cat.description}
               >
-                <span
-                  title="Drag to reorder"
-                  style={{ cursor: "grab", opacity: 0.45, flexShrink: 0, lineHeight: 0 }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <GripIcon />
-                </span>
-                <span
-                  className="cat-label-wrapper"
-                  style={{ flex: 1, position: "relative" }}
-                  onClick={() => handleCategorySelect(cat)}
-                >
-                  {cat.label}
-                  {cat.description && (
-                    <span className="cat-tooltip">
-                      {cat.description}
-                    </span>
-                  )}
-                </span>
-              </li>
+                {cat.label}
+              </button>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 
-      {/* Newsletter Template Selector (Only visible for Clean-It-Up mode) */}
-      {templates.length > 0 && rule === "distill" && (
-        <div className="select-wrapper" style={{ flex: 1, minWidth: "160px" }}>
-          <select
-            value={selectedTemplateId}
-            onChange={(e) => handleSelectTemplate(e.target.value)}
-            className="modern-select"
-            style={{ paddingRight: "32px", fontSize: "0.95rem" }}
-          >
-            <option value="none">Select Newsletter Template...</option>
-            {templates.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <button
-        onClick={rule === "distill" ? handleDistill : handleProcess}
-        disabled={isProcessing}
-        className="btn btn-primary"
-      >
-        {isProcessing ? (
-          "Processing..."
-        ) : rule === "distill" ? (
-          <>
-            <SparklesIcon /> Clean Up Text
-          </>
-        ) : (
-          <>
-            <SparklesIcon /> Process with Gemini AI
-          </>
-        )}
-      </button>
-
-      <button onClick={handleClear} className="btn btn-secondary">
-        <ClearIcon /> Clear
-      </button>
     </div>
   );
 }

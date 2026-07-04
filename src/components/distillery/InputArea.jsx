@@ -4,9 +4,9 @@ import { ClipboardIcon } from "../shared/Icons";
 export function InputArea({ clipboardText, setClipboardText, handlePaste, handleTextPaste }) {
   if (!clipboardText) {
     return (
-      <button onClick={handlePaste} className="paste-hero-btn">
-        <ClipboardIcon /> Paste from Device Clipboard
-        <span>Click here to grab contents from your system clipboard</span>
+      <button onClick={handlePaste} className="paste-hero-btn" style={{ padding: "32px", fontSize: "1.2rem" }}>
+        Paste Text to Listen
+        <span style={{ fontSize: "0.9rem", opacity: 0.8, marginTop: "8px" }}>Click here to paste an email, newsletter, article, or document</span>
       </button>
     );
   }
@@ -26,7 +26,7 @@ export function InputArea({ clipboardText, setClipboardText, handlePaste, handle
             }
           }}
           className="modern-textarea"
-          placeholder="Enter or paste text to process..."
+          placeholder="Paste email, newsletter, article, PDF text, devotional, report, or any document..."
         />
         <span className="char-counter">{clipboardText.length} chars</span>
       </div>

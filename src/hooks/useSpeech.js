@@ -3,7 +3,12 @@ import { optimizeForSpeech } from "../utils/ttsOptimizer";
 
 export function useSpeech(defaultRate = 1.0) {
   const [voices, setVoices] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState("");
+  const [selectedVoice, setSelectedVoice] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("vocalize_selected_voice") || "";
+    }
+    return "";
+  });
   const [rate, setRate] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = parseFloat(localStorage.getItem("vocalize_speech_rate"));
@@ -20,17 +25,29 @@ export function useSpeech(defaultRate = 1.0) {
     const loadVoices = () => {
       if (typeof window !== "undefined" && window.speechSynthesis) {
         const availableVoices = window.speechSynthesis.getVoices();
-        setVoices(availableVoices);
 
         if (availableVoices.length > 0) {
+          // Sort voices: Local English first, then Local, then Cloud English, then rest
+          availableVoices.sort((a, b) => {
+            if (a.localService && !b.localService) return -1;
+            if (!a.localService && b.localService) return 1;
+            if (a.lang.startsWith("en") && !b.lang.startsWith("en")) return -1;
+            if (!a.lang.startsWith("en") && b.lang.startsWith("en")) return 1;
+            return a.name.localeCompare(b.name);
+          });
+          setVoices(availableVoices);
+
           // Keep current selection if valid, otherwise pick default
           const hasCurrent = availableVoices.find(v => v.name === selectedVoice);
           if (!hasCurrent) {
+            // Prioritize: 1. Local English, 2. Any Local, 3. Any English, 4. First available
             const defaultVoice =
-              availableVoices.find((v) => v.lang.startsWith("en-")) ||
+              availableVoices.find((v) => v.lang.startsWith("en") && v.localService) ||
+              availableVoices.find((v) => v.localService) ||
               availableVoices.find((v) => v.lang.startsWith("en")) ||
               availableVoices[0];
             setSelectedVoice(defaultVoice.name);
+            localStorage.setItem("vocalize_selected_voice", defaultVoice.name);
           }
         }
       }
@@ -101,6 +118,7 @@ export function useSpeech(defaultRate = 1.0) {
 
   const handleVoiceChange = useCallback((voiceName, currentText) => {
     setSelectedVoice(voiceName);
+    localStorage.setItem("vocalize_selected_voice", voiceName);
     if (isPlaying && currentText) {
       // Restart speech with new voice
       stopSpeech();

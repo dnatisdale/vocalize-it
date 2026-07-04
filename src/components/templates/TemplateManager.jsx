@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { LockIcon, UnlockIcon, EditIcon, TrashIcon } from "../shared/Icons";
 
 export function TemplateManager({
   templates,
@@ -34,13 +33,13 @@ export function TemplateManager({
     >
       <div className="result-header" style={{ marginBottom: "16px" }}>
         <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          Custom Filters ({templates.length})
+          Ignored Phrases ({templates.length})
         </span>
         {renderLayoutGrip("filters")}
       </div>
 
       <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
-        Create custom templates for newsletters you paste regularly to exclude specific boilerplate and repeating sections from being read.
+        Create custom profiles for newsletters you paste regularly to automatically skip boilerplate and repeating sections.
       </p>
 
       <div className="new-template-form" style={{ display: "flex", gap: "10px", flexWrap: "wrap", background: "var(--bg-app)", padding: "16px", borderRadius: "12px", border: "1px solid var(--border-color)", marginBottom: "20px" }}>
@@ -92,17 +91,14 @@ export function TemplateManager({
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <span style={{ transition: "transform 0.2s", transform: expandedTemplateId === tpl.id ? "rotate(90deg)" : "rotate(0deg)", color: "var(--text-secondary)", fontSize: "0.8rem", display: "inline-block" }}>▶</span>
                   <strong style={{ fontSize: "0.95rem" }}>{tpl.name}</strong>
-                  {tpl.isLocked && <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", background: "rgba(0,0,0,0.1)", padding: "2px 6px", borderRadius: "4px" }} title="Locked template">Locked</span>}
+                  {tpl.isLocked && <span style={{ fontSize: "0.75rem", color: "var(--color-primary)", background: "var(--bg-input)", border: "1px solid var(--border-color)", padding: "2px 6px", borderRadius: "4px" }} title="Using Preset Settings">Preset Active</span>}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }} onClick={e => e.stopPropagation()}>
-                  <button onClick={() => handleToggleLockTemplate(tpl.id)} className="btn-icon" title={tpl.isLocked ? "Unlock template to edit" : "Lock template to prevent accidental edits"} style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "4px" }}>
-                    {tpl.isLocked ? <LockIcon /> : <UnlockIcon />}
+                  <button onClick={() => handleRenameTemplate(tpl.id, tpl.name)} className="btn-icon" title="Rename template" style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "4px", fontSize: "0.85rem" }}>
+                    Edit
                   </button>
-                  <button onClick={() => handleRenameTemplate(tpl.id, tpl.name)} className="btn-icon" title="Rename template" style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "4px" }}>
-                    <EditIcon />
-                  </button>
-                  <button onClick={() => handleDeleteTemplate(tpl.id)} className="btn-icon" title="Delete template" style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--color-danger)", padding: "4px" }}>
-                    <TrashIcon />
+                  <button onClick={() => handleDeleteTemplate(tpl.id)} className="btn-icon" title="Delete template" style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--color-danger)", padding: "4px", fontSize: "1.1rem", lineHeight: 1 }}>
+                    ×
                   </button>
                 </div>
               </div>
