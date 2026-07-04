@@ -1605,7 +1605,16 @@ function App() {
                         >
                           {/* Chevron toggle — top-right corner */}
                           <button
-                            onClick={() => setSelectedTemplateId(selectedTemplateId === tpl.id ? "none" : tpl.id)}
+                            onClick={() => {
+                              if (isExpanded) {
+                                // Collapsing: lock it automatically
+                                setTemplates(prev => prev.map(t => t.id === tpl.id ? { ...t, isLocked: true } : t));
+                                setSelectedTemplateId("none");
+                              } else {
+                                // Expanding
+                                setSelectedTemplateId(tpl.id);
+                              }
+                            }}
                             title={isExpanded ? "Collapse" : "Expand to manage sections"}
                             style={{
                               position: "absolute",
