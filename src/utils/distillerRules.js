@@ -88,6 +88,11 @@ export const LINE_DROP_RULES = [
         !/[,;]/.test(t);
     },
   },
+  {
+    label: "study-bible-cross-refs",
+    test: (line) =>
+      /^(see\s+(note|footnote)\s*\d*|cross\s*references?:|footnote:|sources?:)/i.test(line.trim()),
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -119,12 +124,37 @@ export const TEXT_REPLACE_RULES = [
     pattern: /[ \t]{2,}/g,
     replace: " ",
   },
+  {
+    label: "footnote-superscripts",
+    pattern: /[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g,
+    replace: "",
+  },
+  {
+    label: "asterisk-dagger-references",
+    pattern: /[*†‡§]+/g,
+    replace: "",
+  },
+  {
+    label: "academic-citations",
+    pattern: /\[\d+\]/g,
+    replace: "",
+  },
+  {
+    label: "scripture-cross-reference-letters",
+    pattern: /\b(\d+)[a-z]\b/g,
+    replace: "$1",
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION 3: POST-PROCESSING RULES
 // ─────────────────────────────────────────────────────────────────────────────
 export const LINE_CLEAN_RULES = [
+  {
+    label: "scripture-verse-numbers",
+    test: (line) => /^\d+\s+/.test(line),
+    clean: (line) => line.replace(/^\d+\s+/, "").trim(),
+  },
   {
     label: "trailing-footer-fragments",
     test: (line) =>

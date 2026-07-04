@@ -114,6 +114,7 @@ AUDIO FORMATTING RULES:
 - Rewrite content for speech rather than reading.
 - Replace visual references with spoken equivalents.
 - Remove phrases such as: see above, see below, see table, figure 1, image above, click here, read more. Convert those ideas into natural narrative.
+- Silently ignore footnote markers, superscript references, academic citations, cross-reference symbols, study note markers, and similar visual reference systems unless they contribute directly to understanding.
 
 The finished result should sound like:
 

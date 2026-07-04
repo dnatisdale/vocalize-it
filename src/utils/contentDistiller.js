@@ -44,6 +44,13 @@ export function distillContent(rawText, options = {}) {
       survivingLines.push("");
       continue;
     }
+
+    // ── STEP 2a: Check for Endnote Blocks ──────────────────────────────────────
+    if (/^(footnotes|references|study notes|cross references|bibliography|sources)[\s:]*$/i.test(trimmed)) {
+      if (debug) console.log(`[distiller] ENDNOTE TRUNCATION hit at:`, JSON.stringify(trimmed));
+      break; // Stop processing entirely; drop the rest of the document
+    }
+
     let dropped = false;
 
     // ── STEP 2b: Check LINE_DROP_RULES & user blocklist ──────────────────────
