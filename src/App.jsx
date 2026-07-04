@@ -375,10 +375,19 @@ function App() {
 
   // Template CRUD actions
   const handleCreateTemplate = (name) => {
+    const trimmedName = name.trim() || "Unnamed Template";
+    
+    // Check for duplicate name (case-insensitive)
+    const isDuplicate = templates.some(t => t.name.toLowerCase() === trimmedName.toLowerCase());
+    if (isDuplicate) {
+      alert("A template with this name already exists. Please choose a different name.");
+      return;
+    }
+
     const newId = "tpl_" + Date.now().toString();
     const newTpl = {
       id: newId,
-      name: name.trim() || "Unnamed Template",
+      name: trimmedName,
       blockedPhrases: [],
       isLocked: false
     };
@@ -438,6 +447,13 @@ function App() {
     const trimmed = newName.trim();
     if (!trimmed) {
       alert("Template name cannot be empty.");
+      return;
+    }
+
+    // Check for duplicate name (case-insensitive), ignoring the current template itself
+    const isDuplicate = templates.some(t => t.id !== id && t.name.toLowerCase() === trimmed.toLowerCase());
+    if (isDuplicate) {
+      alert("A template with this name already exists. Please choose a different name.");
       return;
     }
     setTemplates(prev => prev.map(t => {
