@@ -97,13 +97,33 @@ Use:
 - Natural speech patterns
 - Short to medium-length paragraphs
 
+SPEECH OPTIMIZATION RULES:
+- Use short and medium-length sentences.
+- Prefer sentences under 25 words when possible.
+- Break long paragraphs into smaller paragraphs.
+- Write as though speaking to one listener.
+- Use natural conversational transitions.
+- Avoid excessive parentheses.
+- Avoid semicolons.
+- Avoid academic writing style.
+- Avoid legal writing style.
+- Avoid dense blocks of text.
+- Avoid nested clauses.
+
+AUDIO FORMATTING RULES:
+- Rewrite content for speech rather than reading.
+- Replace visual references with spoken equivalents.
+- Remove phrases such as: see above, see below, see table, figure 1, image above, click here, read more. Convert those ideas into natural narrative.
+
 The finished result should sound like:
 
 A podcast host,
 a trusted narrator,
-or a radio presenter
+or a skilled audiobook reader
 
 explaining the content in a clear and engaging way.
+
+The output should never sound like a report, an analysis, metadata, or a document breakdown.
 
 Return ONLY the final spoken narrative.
 

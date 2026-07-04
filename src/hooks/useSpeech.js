@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { optimizeForSpeech } from "../utils/ttsOptimizer";
 
 export function useSpeech(defaultRate = 1.0) {
   const [voices, setVoices] = useState([]);
@@ -71,7 +72,8 @@ export function useSpeech(defaultRate = 1.0) {
 
     // Start completely new speech
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    const optimizedText = optimizeForSpeech(textToSpeak);
+    const utterance = new SpeechSynthesisUtterance(optimizedText);
 
     if (selectedVoice) {
       const voiceObj = voices.find((v) => v.name === selectedVoice);
@@ -104,7 +106,8 @@ export function useSpeech(defaultRate = 1.0) {
       stopSpeech();
       // Need a slight timeout to let cancel finish in some browsers
       setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(currentText);
+        const optimizedText = optimizeForSpeech(currentText);
+        const utterance = new SpeechSynthesisUtterance(optimizedText);
         const voiceObj = voices.find((v) => v.name === voiceName);
         if (voiceObj) utterance.voice = voiceObj;
         utterance.rate = rate;
@@ -126,7 +129,8 @@ export function useSpeech(defaultRate = 1.0) {
     if (isPlaying && currentText) {
       stopSpeech();
       setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(currentText);
+        const optimizedText = optimizeForSpeech(currentText);
+        const utterance = new SpeechSynthesisUtterance(optimizedText);
         if (selectedVoice) {
           const voiceObj = voices.find((v) => v.name === selectedVoice);
           if (voiceObj) utterance.voice = voiceObj;

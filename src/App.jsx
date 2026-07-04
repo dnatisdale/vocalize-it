@@ -415,6 +415,19 @@ function App() {
           return null;
         })}
       </div>
+
+      <div style={{ textAlign: "center", marginTop: "24px", paddingBottom: "24px", color: "var(--text-secondary)", fontSize: "0.8rem", wordBreak: "break-all", opacity: 0.7 }}>
+        {typeof window !== "undefined" && (
+          <a 
+            href={window.location.href} 
+            style={{ color: "inherit", textDecoration: "none" }}
+            onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
+            onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
+          >
+            {window.location.href}
+          </a>
+        )}
+      </div>
     </div>
   );
 }

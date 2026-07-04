@@ -100,11 +100,29 @@ export function TTSPlayer({
                 type="range"
                 min="0.5"
                 max="2.0"
-                step="0.1"
+                step="0.05"
                 value={rate}
                 onChange={(e) => handleRateChange(parseFloat(e.target.value), processedText || clipboardText)}
                 className="modern-slider"
               />
+              <div style={{ display: "flex", gap: "6px", marginTop: "8px", justifyContent: "space-between" }}>
+                <button 
+                  onClick={() => handleRateChange(0.85, processedText || clipboardText)}
+                  style={{ flex: 1, fontSize: "0.75rem", padding: "4px 0", background: rate === 0.85 ? "var(--color-primary)" : "var(--bg-input)", color: rate === 0.85 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "4px", cursor: "pointer" }}
+                >Slow</button>
+                <button 
+                  onClick={() => handleRateChange(1.0, processedText || clipboardText)}
+                  style={{ flex: 1, fontSize: "0.75rem", padding: "4px 0", background: rate === 1.0 ? "var(--color-primary)" : "var(--bg-input)", color: rate === 1.0 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "4px", cursor: "pointer" }}
+                >Normal</button>
+                <button 
+                  onClick={() => handleRateChange(1.1, processedText || clipboardText)}
+                  style={{ flex: 1, fontSize: "0.75rem", padding: "4px 0", background: rate === 1.1 ? "var(--color-primary)" : "var(--bg-input)", color: rate === 1.1 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "4px", cursor: "pointer" }}
+                >Podcast</button>
+                <button 
+                  onClick={() => handleRateChange(1.25, processedText || clipboardText)}
+                  style={{ flex: 1, fontSize: "0.75rem", padding: "4px 0", background: rate === 1.25 ? "var(--color-primary)" : "var(--bg-input)", color: rate === 1.25 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "4px", cursor: "pointer" }}
+                >Fast</button>
+              </div>
             </div>
           </div>
         </div>
