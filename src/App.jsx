@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Header } from "./components/layout/Header";
 import { InstallBanner } from "./components/layout/InstallBanner";
+import { UpdateBanner } from "./components/layout/UpdateBanner";
 import { InputArea } from "./components/distillery/InputArea";
 import { ActionControls, DEFAULT_CATEGORIES } from "./components/distillery/ActionControls";
 import { ResultCard } from "./components/distillery/ResultCard";
@@ -23,7 +24,7 @@ function generateHistoryId() {
 
 function App() {
   // PWA & Storage Hooks
-  const { showInstallBanner, triggerInstallPrompt, dismissInstallBanner } = usePWA();
+  const { showInstallBanner, triggerInstallPrompt, dismissInstallBanner, needRefresh, updateServiceWorker } = usePWA();
   const [theme, setTheme] = useLocalStorage("vocalize_theme", "dark");
   const [history, setHistory] = useLocalStorage("vocalize_history", []);
 
@@ -312,6 +313,7 @@ function App() {
         <div className="blob blob-2"></div>
       </div>
 
+      <UpdateBanner needRefresh={needRefresh} updateServiceWorker={updateServiceWorker} />
       <InstallBanner 
         showInstallBanner={showInstallBanner} 
         triggerInstallPrompt={triggerInstallPrompt} 
