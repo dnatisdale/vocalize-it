@@ -285,8 +285,8 @@ function App() {
           toggleSettings={() => setIsSettingsOpen(!isSettingsOpen)}
         />
 
-        {isSettingsOpen ? (
-          <div className="settings-panel" style={{ animation: "fadeIn 0.2s" }}>
+        {isSettingsOpen && (
+          <div className="settings-panel collapsible-drawer" style={{ animation: "slideDown 0.3s ease-out", overflow: "hidden" }}>
             <h2 style={{ fontSize: "1.5rem", marginBottom: "16px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>Settings</h2>
             
             <div className="settings-section" style={{ marginBottom: "24px" }}>
@@ -336,9 +336,10 @@ function App() {
               )}
             </div>
           </div>
-        ) : (
-          <>
-            <InputArea 
+        )}
+
+        <div className="main-content" style={{ marginTop: isSettingsOpen ? "24px" : "0", transition: "margin-top 0.3s ease" }}>
+          <InputArea 
               clipboardText={clipboardText}
               setClipboardText={setClipboardText}
               handlePaste={handlePaste}
@@ -404,8 +405,8 @@ function App() {
                 />
               </div>
             )}
-          </>
-        )}
+          )}
+        </div>
       </div>
 
       <div style={{ textAlign: "center", marginTop: "24px", paddingBottom: "24px", color: "var(--text-secondary)", fontSize: "0.85rem", opacity: 0.8 }}>
