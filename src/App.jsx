@@ -1259,7 +1259,7 @@ function App() {
                 }}
               >
                 <div className="result-header">
-                  <span>{rule === "distill" ? "Distillery Sections" : "AI Output Result"}</span>
+                  <span>{rule === "distill" ? "Distillery" : "AI Output Result"}</span>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     {renderLayoutGrip("distillery")}
                     <span className="result-badge">{getRuleLabel(rule)}</span>
