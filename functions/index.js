@@ -14,38 +14,103 @@ const PROMPT_REGISTRY = {
   translate_es: (text) => `Please translate the following text into Spanish. Output ONLY the translation without any extra comments, introduction, or formatting:\n\n${text}`,
   translate_th: (text) => `Please translate the following text into Thai. Output ONLY the translation without any extra comments, introduction, or formatting:\n\n${text}`,
   newsletter: (text) => `You are a reading assistant preparing an email newsletter to be read aloud. Your job is to extract ONLY the editorial content — the actual stories, opinions, facts, and insights the author intended to communicate. You MUST silently discard everything else: navigation menus, sponsored content labels, calls-to-action, social media prompts, "view online" links, unsubscribe text, reply/forward headers, mailing addresses, photo captions, and date navigation bars. Do not say what you removed. Write the result as clean, flowing prose with natural paragraph breaks. Do not use bullet points or headers. Make it sound like a human read you the newsletter over coffee.\n\nText:\n${text}`,
-  listenmode: (text) => `You are a reading assistant tasked with transforming the following text into an audio-first listening experience. First, silently determine the likely document type (e.g. Newsletter, Email, News Article, Blog Post, Government Notice, Research Paper, Training Guide, or General Document). 
+  listenmode: (text) => `
+You are the Vocalize.it Distillery Engine.
 
-Then, aggressively remove content with little value when spoken aloud, including:
-- navigation menus
-- social links
-- unsubscribe sections
-- footer content
-- legal disclaimers
-- advertisements
-- sponsorship notices
-- repetitive content
-- boilerplate
+Your goal is not to analyze the document.
 
-You must preserve:
-- main topic
-- dates
-- deadlines
-- action items
-- recommendations
-- decisions
-- important statistics
-- key facts
+Your goal is not to summarize the structure.
 
-Rewrite the final result as an audio-friendly narrative designed for listening. 
-REQUIREMENTS:
-- Use a conversational tone and natural speech flow.
-- Use complete sentences only.
-- Do NOT use markdown.
-- Do NOT use bullet points or lists.
-- Do NOT reference the visual layout of the page (e.g. "as shown below").
+Your goal is to create a pleasant listening experience.
 
-Text to process:\n\n${text}`,
+First, silently determine the document type.
+
+Possible document types include:
+- Newsletter
+- Email
+- Blog Post
+- News Article
+- Government Notice
+- Research Paper
+- Training Guide
+- Memo
+- General Document
+
+Then silently remove anything that provides little value to a listener, including:
+
+- Navigation menus
+- Social media links
+- Unsubscribe instructions
+- Email headers
+- Mailing addresses
+- Copyright notices
+- Legal disclaimers
+- Advertising
+- Sponsorship messages
+- Donation requests
+- "View online" links
+- Footer content
+- Repeated information
+- Metadata
+- Reference numbers
+- Administrative text
+
+Preserve:
+
+- Main ideas
+- Important facts
+- Key insights
+- Decisions
+- Action items
+- Recommendations
+- Deadlines
+- Dates that matter
+- Statistics that matter
+- Quotes that add meaning
+
+IMPORTANT OUTPUT RULES
+
+Do NOT output:
+
+- Document Type
+- Source
+- Author
+- Section headings
+- Numbered sections
+- Metadata
+- Analysis
+- Explanations of what was removed
+- Bullet points
+- Markdown formatting
+
+Instead:
+
+Imagine you are speaking directly to a listener through headphones.
+
+Write a natural narrative that sounds like a knowledgeable friend explaining the content.
+
+Use:
+
+- Clear language
+- Complete sentences
+- Smooth transitions
+- Natural speech patterns
+- Short to medium-length paragraphs
+
+The finished result should sound like:
+
+A podcast host,
+a trusted narrator,
+or a radio presenter
+
+explaining the content in a clear and engaging way.
+
+Return ONLY the final spoken narrative.
+
+Text to process:
+
+${text}
+`,
   default: (text) => `Process the following text: ${text}`
 };
 
