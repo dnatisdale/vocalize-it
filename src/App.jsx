@@ -1428,11 +1428,6 @@ function App() {
                   </span>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     {renderLayoutGrip("player")}
-                    {rule === "distill" && activeTemplate && (
-                      <span className="template-badge-applied">
-                        Active Filter: {activeTemplate.name}
-                      </span>
-                    )}
                     <button
                       onClick={() => setIsPlayerSettingsExpanded(prev => !prev)}
                       title={isPlayerSettingsExpanded ? "Hide Player Settings" : "Show Player Settings"}
