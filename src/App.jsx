@@ -190,17 +190,49 @@ function App() {
   const [distillerStats, setDistillerStats] = useState("");
 
   // Templates state (Max 10)
+  const defaultStandardTemplate = {
+    id: "standard-cleanup-default",
+    name: "Standard Clean-Up",
+    isLocked: true,
+    blockedPhrases: [
+      "Click here to unsubscribe",
+      "Manage your preferences",
+      "Update your profile",
+      "Privacy Policy",
+      "Terms of Service",
+      "California Privacy Rights",
+      "All rights reserved",
+      "Our mailing address is",
+      "This email was sent to you because",
+      "View this email in your browser",
+      "Having trouble viewing this email?",
+      "Follow us on Twitter",
+      "Like us on Facebook",
+      "Share this on LinkedIn",
+      "Download our app on the App Store",
+      "Get it on Google Play",
+      "Forward to a friend",
+      "A word from our sponsors",
+      "Advertisement",
+      "Was this email helpful?",
+      "Rate this newsletter"
+    ]
+  };
+
   const [templates, setTemplates] = useState(() => {
     try {
       const saved = localStorage.getItem("vocalize_newsletter_templates");
+      let parsed = [];
       if (saved) {
-        const parsed = JSON.parse(saved);
-        // Ensure all templates have isLocked defined (migration for older saved data)
-        return parsed.map(t => ({ isLocked: false, ...t }));
+        parsed = JSON.parse(saved).map(t => ({ isLocked: false, ...t }));
       }
-      return [];
+      // Inject standard template if it doesn't exist yet
+      if (!parsed.some(t => t.id === "standard-cleanup-default")) {
+        parsed.unshift(defaultStandardTemplate);
+      }
+      return parsed;
     } catch {
-      return [];
+      return [defaultStandardTemplate];
     }
   });
 
