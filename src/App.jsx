@@ -235,6 +235,10 @@ function App() {
       if (!existingStandard) {
         parsed.unshift(defaultStandardTemplate);
       } else {
+        // Force rename for existing users who had the old name cached
+        if (existingStandard.name === "Standard Clean-Up") {
+          existingStandard.name = "Basic Clean-Up";
+        }
         defaultStandardTemplate.blockedPhrases.forEach(phrase => {
           if (!existingStandard.blockedPhrases.includes(phrase)) {
             existingStandard.blockedPhrases.push(phrase);
