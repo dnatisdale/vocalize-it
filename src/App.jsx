@@ -253,9 +253,13 @@ function App() {
 
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("vocalize_selected_template_id") || "none";
+      const saved = localStorage.getItem("vocalize_selected_template_id");
+      if (!saved || saved === "none") {
+        return "standard-cleanup-default";
+      }
+      return saved;
     }
-    return "none";
+    return "standard-cleanup-default";
   });
   const [showScrollTop, setShowScrollTop] = useState(false); // Scroll-to-top floating button visibility
   
