@@ -1759,7 +1759,7 @@ function App() {
         <section className="history-section">
           <div className="history-title">
             <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <ClipboardIcon /> Clipboard History
+              <ClipboardIcon /> History
             </span>
             {history.length > 0 && (
               <button onClick={handleClearHistory} className="btn-danger-outline" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}>
