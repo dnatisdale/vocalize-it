@@ -1812,7 +1812,7 @@ function App() {
                     <div className="history-item-meta">
                       <span className="history-item-rule">{getRuleLabel(item.rule)}</span>
                       <span>•</span>
-                      <span>{item.timestamp}</span>
+                      <span>{item.timestamp.split(',')[0]}</span>
                     </div>
                     <div className="history-item-text">
                       {item.originalText}
