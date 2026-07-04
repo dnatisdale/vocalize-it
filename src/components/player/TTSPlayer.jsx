@@ -53,7 +53,7 @@ export function TTSPlayer({
           <input
             type="range"
             min="0.5"
-            max="2.0"
+            max="1.5"
             step="0.05"
             value={rate}
             onChange={(e) => handleRateChange(parseFloat(e.target.value), processedText || clipboardText)}
