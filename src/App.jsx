@@ -473,14 +473,23 @@ function App() {
           Turn emails, newsletters, PDFs, articles, devotionals, reports, and documents into audio you can actually understand.
         </p>
         {typeof window !== "undefined" && (
-          <a 
-            href={window.location.href} 
-            style={{ color: "inherit", textDecoration: "none" }}
-            onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
-            onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
-          >
-            {window.location.href}
-          </a>
+          <div style={{ marginBottom: "16px" }}>
+            <a 
+              href={window.location.href} 
+              style={{ color: "inherit", textDecoration: "none" }}
+              onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
+              onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
+            >
+              {window.location.href}
+            </a>
+          </div>
+        )}
+        
+        {typeof __APP_VERSION__ !== "undefined" && typeof __APP_UPDATED__ !== "undefined" && (
+          <div style={{ fontSize: "0.75rem", opacity: 0.6, display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span>Version {__APP_VERSION__}</span>
+            <span>Updated {__APP_UPDATED__}</span>
+          </div>
         )}
       </div>
     </div>
