@@ -167,12 +167,7 @@ function App() {
       
       setProcessedText(resultText);
 
-      // Auto-play for the "Listen Better" primary workflow
-      if (rule === "listenmode" || rule === "distill") {
-        setTimeout(() => {
-          speech.handleSpeakToggle(resultText);
-        }, 100);
-      }
+      // Autoplay removed for Issue 1 (Playback must require explicit user action)
       
       const newHistoryItem = {
         id: generateHistoryId(),
@@ -295,62 +290,9 @@ function App() {
             <h2 style={{ fontSize: "1.5rem", marginBottom: "16px", borderBottom: "1px solid var(--border-color)", paddingBottom: "8px" }}>Settings</h2>
             
             <div className="settings-section" style={{ marginBottom: "24px" }}>
-              <h3 style={{ fontSize: "1.1rem", marginBottom: "12px" }}>Voice Configuration</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <label className="slider-label" style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Select Voice</label>
-                <div className="select-wrapper" style={{ minWidth: "100%" }}>
-                  <select
-                    value={speech.selectedVoice}
-                    onChange={(e) => speech.handleVoiceChange(e.target.value, processedText || clipboardText)}
-                    className="modern-select"
-                    style={{ padding: "10px 14px", fontSize: "0.95rem" }}
-                  >
-                    {speech.voices.length === 0 ? (
-                      <option>Default Voice</option>
-                    ) : (
-                      speech.voices.map((v) => (
-                        <option key={v.name} value={v.name}>
-                          {v.name} ({v.lang}) {v.localService ? "[Offline]" : "[Cloud]"}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div className="speed-slider-group" style={{ marginTop: "16px" }}>
-                <div className="slider-label">
-                  <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Speed / Rate</span>
-                  <span>{speech.rate}x</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.05"
-                  value={speech.rate}
-                  onChange={(e) => speech.handleRateChange(parseFloat(e.target.value), processedText || clipboardText)}
-                  className="modern-slider"
-                />
-                <div style={{ display: "flex", gap: "8px", marginTop: "12px", justifyContent: "space-between" }}>
-                  <button 
-                    onClick={() => speech.handleRateChange(0.85, processedText || clipboardText)}
-                    style={{ flex: 1, fontSize: "0.85rem", padding: "6px 0", background: speech.rate === 0.85 ? "var(--color-primary)" : "var(--bg-input)", color: speech.rate === 0.85 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "6px", cursor: "pointer" }}
-                  >Slow</button>
-                  <button 
-                    onClick={() => speech.handleRateChange(1.0, processedText || clipboardText)}
-                    style={{ flex: 1, fontSize: "0.85rem", padding: "6px 0", background: speech.rate === 1.0 ? "var(--color-primary)" : "var(--bg-input)", color: speech.rate === 1.0 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "6px", cursor: "pointer" }}
-                  >Normal</button>
-                  <button 
-                    onClick={() => speech.handleRateChange(1.1, processedText || clipboardText)}
-                    style={{ flex: 1, fontSize: "0.85rem", padding: "6px 0", background: speech.rate === 1.1 ? "var(--color-primary)" : "var(--bg-input)", color: speech.rate === 1.1 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "6px", cursor: "pointer" }}
-                  >Podcast</button>
-                  <button 
-                    onClick={() => speech.handleRateChange(1.25, processedText || clipboardText)}
-                    style={{ flex: 1, fontSize: "0.85rem", padding: "6px 0", background: speech.rate === 1.25 ? "var(--color-primary)" : "var(--bg-input)", color: speech.rate === 1.25 ? "#fff" : "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "6px", cursor: "pointer" }}
-                  >Fast</button>
-                </div>
-              </div>
+              <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: "16px" }}>
+                Audio playback controls (speed and voice selection) are now always accessible directly in the player.
+              </p>
             </div>
 
             <TemplateManager 
