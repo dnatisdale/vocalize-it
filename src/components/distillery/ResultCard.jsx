@@ -73,10 +73,9 @@ export function ResultCard({
                 <button
                   onClick={() => setConfirmBlock(idx)}
                   title="Don't read this again"
+                  className="btn-ignore"
                   style={{
-                    background: "var(--bg-input)", border: "1px solid var(--border-color)", 
-                    borderRadius: "8px", cursor: "pointer", padding: "4px 8px", fontSize: "0.9rem",
-                    opacity: confirmBlock === idx ? 1 : 0.4, transition: "opacity 0.2s"
+                    opacity: confirmBlock === idx ? 1 : 0.4
                   }}
                   onMouseOver={(e) => e.currentTarget.style.opacity = 1}
                   onMouseOut={(e) => { if (confirmBlock !== idx) e.currentTarget.style.opacity = 0.4; }}
