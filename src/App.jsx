@@ -1405,7 +1405,7 @@ function App() {
               >
                 <div className="result-header">
                   <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <SpeakerIcon /> <span>TTS Player</span>
+                    <span>TTS Player</span>
                   </span>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     {renderLayoutGrip("player")}
@@ -1486,7 +1486,7 @@ function App() {
                 {/* Play/Pause controls actions */}
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "16px" }}>
                   <button onClick={handleSpeakToggle} className="btn btn-accent" style={{ flex: 1, minWidth: "140px" }}>
-                    {isPlaying ? (isPaused ? <PlayIcon /> : <PauseIcon />) : <PlayIcon />}
+                    {isPlaying ? (isPaused ? <PlayIcon /> : <PauseIcon />) : <SpeakerIcon />}
                     <span>{isPlaying ? (isPaused ? " Resume Audio" : " Pause Audio") : " Play Audio"}</span>
                   </button>
                   {isPlaying && (
