@@ -215,7 +215,11 @@ function App() {
       "A word from our sponsors",
       "Advertisement",
       "Was this email helpful?",
-      "Rate this newsletter"
+      "Rate this newsletter",
+      "Salutation",
+      "Greeting",
+      "Job title",
+      "Mailing address"
     ]
   };
 
@@ -226,9 +230,16 @@ function App() {
       if (saved) {
         parsed = JSON.parse(saved).map(t => ({ isLocked: false, ...t }));
       }
-      // Inject standard template if it doesn't exist yet
-      if (!parsed.some(t => t.id === "standard-cleanup-default")) {
+      // Inject standard template if it doesn't exist yet, or merge new default phrases if it does
+      const existingStandard = parsed.find(t => t.id === "standard-cleanup-default");
+      if (!existingStandard) {
         parsed.unshift(defaultStandardTemplate);
+      } else {
+        defaultStandardTemplate.blockedPhrases.forEach(phrase => {
+          if (!existingStandard.blockedPhrases.includes(phrase)) {
+            existingStandard.blockedPhrases.push(phrase);
+          }
+        });
       }
       return parsed;
     } catch {
