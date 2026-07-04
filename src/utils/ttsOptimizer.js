@@ -73,6 +73,25 @@ export function optimizeForSpeech(rawText) {
     text = text.replace(regex, expansion);
   }
 
+  // 2a. Remove Cross-References and Academic Citations
+  text = text.replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, "");
+  text = text.replace(/[*†‡§]+/g, "");
+  text = text.replace(/\[\d+\]/g, "");
+  text = text.replace(/\(Ref\s*\d+\)/gi, "");
+  text = text.replace(/Footnote\s*\d+/gi, "");
+  text = text.replace(/Endnote\s*\d+/gi, "");
+
+  // 2b. Expand Scripture References
+  text = text.replace(/\b([1-3]?\s*[A-Za-z]+)\s+(\d+):(\d+)(?:-(\d+))?\b/g, (match, book, chapter, verseStart, verseEnd) => {
+    if (verseEnd) {
+      return `${book} chapter ${chapter}, verses ${verseStart} through ${verseEnd}`;
+    }
+    return `${book} chapter ${chapter}, verse ${verseStart}`;
+  });
+
+  // 2c. Remove Embedded Verse Numbers
+  text = text.replace(/(^|\n|\.\s+)\d+\s+/g, "$1");
+
   // 3. Optimize Punctuation & Improve Pauses
   // Convert colons/semicolons followed by newlines/spaces into ellipses for natural pauses
   text = text.replace(/[:;]\s*\n/g, "... \n");
@@ -98,6 +117,11 @@ export function optimizeForSpeech(rawText) {
 
   for (const para of paragraphs) {
     if (!para.trim()) continue;
+
+    // Truncate spoken text at endnote headers
+    if (/^(footnotes|references|study notes|bibliography|source notes|cross references|citation sections)[\s:]*$/i.test(para.trim())) {
+      break;
+    }
 
     const sentences = splitIntoSentences(para.trim());
     const shortSentences = [];
