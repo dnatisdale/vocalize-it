@@ -1512,13 +1512,37 @@ function App() {
                             background: "var(--history-item-bg)", 
                             border: "1px solid var(--border-color)", 
                             borderRadius: "12px", 
-                            padding: "16px" 
+                            padding: "16px",
+                            position: "relative"
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                          {/* Chevron toggle — top-right corner */}
+                          <button
+                            onClick={() => setSelectedTemplateId(selectedTemplateId === tpl.id ? "none" : tpl.id)}
+                            title={isExpanded ? "Collapse" : "Expand to manage sections"}
+                            style={{
+                              position: "absolute",
+                              top: "12px",
+                              right: "12px",
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: "4px",
+                              display: "flex",
+                              alignItems: "center",
+                              color: "var(--text-secondary)",
+                              transition: "color 0.2s"
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.25s ease", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>
+                              <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                          </button>
+
+                          {/* Card header — name + lock icon + subtitle */}
+                          <div style={{ paddingRight: "32px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <h4 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}>{tpl.name}</h4>
-                              {/* Lock/unlock icon-only toggle — sits right next to the template name */}
                               <button
                                 onClick={() => handleToggleLockTemplate(tpl.id)}
                                 title={tpl.isLocked ? "Unlock template to allow editing" : "Lock template to prevent accidental edits"}
@@ -1537,33 +1561,28 @@ function App() {
                                 {tpl.isLocked ? <LockIcon /> : <UnlockIcon />}
                               </button>
                             </div>
-                            <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "4px", width: "100%" }}>
+                            <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>
                               {tpl.blockedPhrases.length} section{tpl.blockedPhrases.length !== 1 ? "s" : ""} excluded
                             </p>
-                            <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                              <button
-                                onClick={() => setSelectedTemplateId(selectedTemplateId === tpl.id ? "none" : tpl.id)}
-                                className="btn-secondary"
-                                style={{ padding: "6px 12px", fontSize: "0.8rem", border: "none", cursor: "pointer" }}
-                              >
-                                {isExpanded ? "Hide Details" : `Manage Sections (${tpl.blockedPhrases.length})`}
-                              </button>
-                              <button
-                                onClick={() => handleRenameTemplate(tpl.id, tpl.name)}
-                                className="btn-secondary"
-                                style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
-                                title="Rename Template"
-                              >
-                                <EditIcon />Rename
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteTemplate(tpl.id)} 
-                                className="btn-danger-outline"
-                                style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
-                              >
-                                <TrashIcon /> Delete
-                              </button>
-                            </div>
+                          </div>
+
+                          {/* Action buttons — always visible */}
+                          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: "10px" }}>
+                            <button
+                              onClick={() => handleRenameTemplate(tpl.id, tpl.name)}
+                              className="btn-secondary"
+                              style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
+                              title="Rename Template"
+                            >
+                              <EditIcon />Rename
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteTemplate(tpl.id)} 
+                              className="btn-danger-outline"
+                              style={{ padding: "6px 10px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", cursor: "pointer" }}
+                            >
+                              <TrashIcon /> Delete
+                            </button>
                           </div>
 
                           {/* Expanded details: blocked phrases list */}
