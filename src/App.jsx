@@ -1087,9 +1087,13 @@ function App() {
             {templates.length > 0 && (
               <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                 {activeTemplate ? (
-                  <span className="template-badge-applied" title={`Selected Filter: "${activeTemplate.name}"`}>
-                    ✓ Active Template: <strong>{activeTemplate.name}</strong> ({activeTemplate.blockedPhrases.length} excluded sections)
-                  </span>
+                  <div className="template-badge-applied" style={{ display: "flex", flexDirection: "column", alignItems: "stretch", width: "100%", gap: "6px" }} title={`Selected Filter: "${activeTemplate.name}"`}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                      <span>✓ Active Template:</span>
+                      <span style={{ fontSize: "0.9em", opacity: 0.9 }}>({activeTemplate.blockedPhrases.length} excluded sections)</span>
+                    </div>
+                    <strong style={{ fontSize: "1.05em" }}>{activeTemplate.name}</strong>
+                  </div>
                 ) : (
                   <span className="template-badge-none">
                     No active template (select one in controls row)
