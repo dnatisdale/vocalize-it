@@ -42,8 +42,7 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
       <div className="app-title-group" style={{ textAlign: "center", maxWidth: "600px", margin: "0 auto" }}>
         <h1 
           className="app-title" 
-          style={{ fontSize: "2.5rem", marginBottom: "8px", cursor: "help" }}
-          title="Turn emails, newsletters, PDFs, articles, devotionals, reports, and documents into audio you can actually understand."
+          style={{ fontSize: "2.5rem", marginBottom: "8px" }}
         >
           Listen Better
         </h1>

@@ -468,7 +468,10 @@ function App() {
         )}
       </div>
 
-      <div style={{ textAlign: "center", marginTop: "24px", paddingBottom: "24px", color: "var(--text-secondary)", fontSize: "0.8rem", wordBreak: "break-all", opacity: 0.7 }}>
+      <div style={{ textAlign: "center", marginTop: "24px", paddingBottom: "24px", color: "var(--text-secondary)", fontSize: "0.85rem", opacity: 0.8 }}>
+        <p style={{ marginBottom: "12px", maxWidth: "400px", margin: "0 auto 12px auto", lineHeight: "1.4" }}>
+          Turn emails, newsletters, PDFs, articles, devotionals, reports, and documents into audio you can actually understand.
+        </p>
         {typeof window !== "undefined" && (
           <a 
             href={window.location.href} 
