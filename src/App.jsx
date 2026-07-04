@@ -1506,7 +1506,7 @@ function App() {
               >
                 <div className="result-header" style={{ marginBottom: "16px" }}>
                   <span style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <SparklesIcon /> Custom Filters ({templates.length})
+                    Custom Filters ({templates.length})
                   </span>
                   {renderLayoutGrip("filters")}
                 </div>
