@@ -88,6 +88,7 @@ export function useSpeech(defaultRate = 1.0) {
     }
 
     // Start completely new speech
+    window.speechSynthesis.resume(); // Fixes Android lock
     window.speechSynthesis.cancel();
     const optimizedText = optimizeForSpeech(textToSpeak);
     const utterance = new SpeechSynthesisUtterance(optimizedText);

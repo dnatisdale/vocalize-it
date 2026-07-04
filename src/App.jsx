@@ -355,6 +355,23 @@ function App() {
               handleTextPaste={handleTextPaste}
             />
 
+            {/* Decorative Wavy Line Divider */}
+            <div style={{ position: "relative", width: "100%", height: "24px", margin: "24px 0" }}>
+              <svg 
+                style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "100vw", height: "150px", zIndex: 0, opacity: 0.15, pointerEvents: "none", color: "var(--text-secondary)" }}
+                viewBox="0 300 1440 450" 
+                preserveAspectRatio="none"
+              >
+                <path 
+                  d="M0,500 C480,720 960,320 1440,600" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="3" 
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+            </div>
+
             {clipboardText && (
               <ActionControls 
                 rule={rule}
@@ -429,27 +446,27 @@ function App() {
 
       <div style={{ textAlign: "center", marginTop: "24px", paddingBottom: "24px", color: "var(--text-secondary)", fontSize: "0.85rem", opacity: 0.8 }}>
         <p style={{ marginBottom: "12px", maxWidth: "400px", margin: "0 auto 12px auto", lineHeight: "1.4" }}>
-          Turn emails, newsletters, PDFs, articles, devotionals, reports, and documents into audio you can actually understand.
+          Turn any digital text into audio you can actually understand. Just copy, paste, and listen.
         </p>
-        {typeof window !== "undefined" && (
-          <div style={{ marginBottom: "16px" }}>
-            <a 
-              href={window.location.href} 
-              style={{ color: "inherit", textDecoration: "none" }}
-              onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
-              onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
-            >
-              {window.location.href}
-            </a>
-          </div>
-        )}
-        
-        {typeof __APP_VERSION__ !== "undefined" && typeof __APP_UPDATED__ !== "undefined" && (
-          <div style={{ fontSize: "0.75rem", opacity: 0.6, display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span>Version {__APP_VERSION__}</span>
-            <span>Updated {__APP_UPDATED__}</span>
-          </div>
-        )}
+          {typeof window !== "undefined" && (
+            <div style={{ marginBottom: "16px" }}>
+              <a 
+                href={window.location.href} 
+                style={{ color: "inherit", textDecoration: "none" }}
+                onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
+                onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
+              >
+                {window.location.href}
+              </a>
+            </div>
+          )}
+          
+          {typeof __APP_VERSION__ !== "undefined" && typeof __APP_UPDATED__ !== "undefined" && (
+            <div style={{ fontSize: "0.75rem", opacity: 0.6, display: "flex", flexDirection: "column", gap: "2px" }}>
+              <span>Version {__APP_VERSION__}</span>
+              <span>Updated {__APP_UPDATED__}</span>
+            </div>
+          )}
       </div>
     </div>
   );

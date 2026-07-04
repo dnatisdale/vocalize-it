@@ -38,7 +38,19 @@ export function TTSPlayer({
 
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "16px" }}>
         <button onClick={() => handleSpeakToggle(processedText || clipboardText)} className="btn btn-accent" style={{ flex: 2, minWidth: "120px" }}>
-          <span>{isPlaying ? (isPaused ? "▶ Resume" : "⏸ Pause") : "▶ Play"}</span>
+          {isPlaying && !isPaused ? (
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div className="soundwave-icon">
+                <div className="bar"></div>
+                <div className="bar"></div>
+                <div className="bar"></div>
+                <div className="bar"></div>
+              </div>
+              Playing...
+            </span>
+          ) : (
+            <span>{isPlaying && isPaused ? "▶ Resume" : "▶ Play"}</span>
+          )}
         </button>
         <button onClick={stopSpeech} className="btn btn-secondary" style={{ flex: 1, minWidth: "100px" }} disabled={!isPlaying && !isPaused}>
           ■ Stop

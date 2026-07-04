@@ -8,45 +8,71 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
         <button
           onClick={toggleSettings}
-          className="theme-toggle-btn"
+          className="header-action-btn"
           title="Settings"
           aria-label="Settings"
-          style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: "0.95rem", padding: "8px", display: "flex", gap: "6px", alignItems: "center" }}
         >
           <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>≡</span> Settings
         </button>
 
-        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
           <button
             onClick={handleShareApp}
-            className="theme-toggle-btn"
+            className="header-action-btn"
             title="Share App"
             aria-label="Share App"
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: "0.9rem", padding: "8px" }}
           >
-            Share ↑
+            <ShareIcon /> Share
           </button>
           <button
             onClick={toggleTheme}
-            className="theme-toggle-btn"
+            className="header-action-btn"
             title="Toggle theme"
             aria-label="Toggle Theme"
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: "0.9rem", padding: "8px" }}
           >
-            Theme {theme === "dark" ? "☀" : "☾"}
+            {theme === "dark" ? <SunIcon /> : <MoonIcon />} Theme
           </button>
         </div>
       </div>
 
       {/* Main Title Area */}
-      <div className="app-title-group" style={{ textAlign: "center", maxWidth: "600px", margin: "0 auto" }}>
-        <h1 
-          className="app-title" 
-          style={{ fontSize: "2.5rem", marginBottom: "8px" }}
+      <div className="app-title-group" style={{ position: "relative", textAlign: "center", maxWidth: "600px", margin: "0 auto", padding: "16px 0" }}>
+        
+        {/* Decorative Wavy Line */}
+        <svg 
+          style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "100vw", height: "150px", zIndex: 0, opacity: 0.15, pointerEvents: "none", color: "var(--text-secondary)" }}
+          viewBox="0 150 1440 350" 
+          preserveAspectRatio="none"
         >
-          Listen Better
-        </h1>
-        <p className="app-subtitle" style={{ fontSize: "1.2rem", fontWeight: "bold", marginBottom: "12px", color: "var(--text-primary)" }}>Paste anything. Hear what matters.</p>
+          <path 
+            d="M0,320 C320,160 640,480 1440,250" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="3" 
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <h1 
+            className="app-title" 
+            style={{ fontSize: "2.5rem", marginBottom: "8px", display: "inline-flex" }}
+          >
+            {"Listen Better".split("").map((char, index) => (
+              <span 
+                key={index} 
+                className="piano-key"
+                style={{ 
+                  animationDelay: `${index * 0.05}s`,
+                  minWidth: char === " " ? "0.3em" : "auto" 
+                }}
+              >
+                {char === " " ? "\u00A0" : char}
+              </span>
+            ))}
+          </h1>
+          <p className="app-subtitle" style={{ fontSize: "1.2rem", fontWeight: "bold", marginBottom: "12px", color: "var(--text-primary)" }}>Paste anything. Hear what matters.</p>
+        </div>
       </div>
     </header>
   );

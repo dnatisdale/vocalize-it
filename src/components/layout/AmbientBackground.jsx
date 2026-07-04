@@ -13,7 +13,7 @@ export function AmbientBackground({ theme }) {
           viewBox="0 0 1440 1024" 
           preserveAspectRatio="xMidYMid slice"
           fill="none"
-          style={{ opacity: 0.15 }}
+          style={{ opacity: 0.25 }}
         >
           <path className="wave-path path-1" d="M0,320 C320,160 640,480 1440,250" stroke="currentColor" strokeWidth="2" />
           <path className="wave-path path-2" d="M0,500 C480,720 960,320 1440,600" stroke="currentColor" strokeWidth="2" />
