@@ -1,0 +1,57 @@
+const BOOK_MAP = {
+  "jn": "John",
+  "john": "John",
+  "mt": "Matthew",
+  "matt": "Matthew",
+  "matthew": "Matthew",
+  "rom": "Romans",
+  "romans": "Romans",
+  "ps": "Psalm",
+  "psa": "Psalm",
+  "psalm": "Psalm",
+  "psalms": "Psalms",
+  "prov": "Proverbs",
+  "proverbs": "Proverbs",
+  "phil": "Philippians",
+  "philippians": "Philippians",
+  "isa": "Isaiah",
+  "isaiah": "Isaiah",
+  "gen": "Genesis",
+  "genesis": "Genesis",
+  "ex": "Exodus",
+  "exodus": "Exodus",
+  "rev": "Revelation",
+  "revelation": "Revelation",
+  "cor": "Corinthians",
+  "corinthians": "Corinthians",
+  "tim": "Timothy",
+  "timothy": "Timothy",
+  "thess": "Thessalonians",
+  "thessalonians": "Thessalonians",
+  "pet": "Peter",
+  "peter": "Peter",
+  "heb": "Hebrews",
+  "hebrews": "Hebrews",
+  "jas": "James",
+  "james": "James",
+  "eph": "Ephesians",
+  "ephesians": "Ephesians",
+  "gal": "Galatians",
+  "galatians": "Galatians",
+  "col": "Colossians",
+  "colossians": "Colossians",
+  "acts": "Acts",
+  "lam": "Lamentations",
+  "lamentations": "Lamentations",
+  "deut": "Deuteronomy",
+  "deuteronomy": "Deuteronomy",
+  "josh": "Joshua",
+  "joshua": "Joshua"
+};
+
+const bookKeys = Object.keys(BOOK_MAP).sort((a,b) => b.length - a.length).join('|');
+const BIBLE_REGEX = new RegExp(`(?:([123])\\s*)?(${bookKeys})\\.?\\s*(\\d+)(?::\\s*(\\d+)(?:\\s*-\\s*(\\d+))?)?`, 'gi');
+
+const text = "1 Cor 13:4-7 and john3:16 and Romans 8:28 and Phil. 4:6-7 and 1cor13:4";
+const matches = [...text.matchAll(BIBLE_REGEX)];
+console.log(matches.map(m => m.slice(0, 6)));

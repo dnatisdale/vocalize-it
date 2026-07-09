@@ -1,0 +1,6 @@
+This is the start of the first       This is the start of the second
+column of text. It goes down         column of text. It continues the
+the page vertically but when         thought from the first column,
+you copy and paste it, it            but PDF extractors often mix
+often gets mixed horizontally        the lines together like this.
+with the second column.              It makes reading impossible.
