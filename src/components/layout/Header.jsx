@@ -15,24 +15,23 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
           <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>≡</span> Settings
         </button>
 
-        <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
-          <button
-            onClick={handleShareApp}
-            className="header-action-btn"
-            title="Share App"
-            aria-label="Share App"
-          >
-            <ShareIcon /> Share
-          </button>
-          <button
-            onClick={toggleTheme}
-            className="header-action-btn"
-            title="Toggle theme"
-            aria-label="Toggle Theme"
-          >
-            {theme === "dark" ? <SunIcon /> : <MoonIcon />} Theme
-          </button>
-        </div>
+        <button
+          onClick={handleShareApp}
+          className="header-action-btn"
+          title="Share App"
+          aria-label="Share App"
+        >
+          <ShareIcon /> Share
+        </button>
+
+        <button
+          onClick={toggleTheme}
+          className="header-action-btn"
+          title="Toggle theme"
+          aria-label="Toggle Theme"
+        >
+          {theme === "dark" ? <SunIcon /> : <MoonIcon />} Theme
+        </button>
       </div>
 
       {/* Main Title Area */}
@@ -54,24 +53,23 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
         </svg>
 
         <div style={{ position: "relative", zIndex: 1 }}>
-          <h1 
-            className="app-title" 
-            style={{ fontSize: "2.5rem", marginBottom: "8px", display: "inline-flex" }}
-          >
+          <h1 className="app-title" style={{ textAlign: "center", display: "block" }}>
             {"Listen Better".split("").map((char, index) => (
               <span 
                 key={index} 
                 className="piano-key"
                 style={{ 
-                  animationDelay: `${index * 0.05}s`,
-                  minWidth: char === " " ? "0.3em" : "auto" 
+                  animationDelay: `${index * 0.06}s`,
+                  WebkitAnimationDelay: `${index * 0.06}s`,
+                  minWidth: char === " " ? "0.15em" : "auto",
+                  fontWeight: index < 6 ? 400 : 800
                 }}
               >
                 {char === " " ? "\u00A0" : char}
               </span>
             ))}
           </h1>
-          <p className="app-subtitle" style={{ fontSize: "1.2rem", fontWeight: "bold", marginBottom: "12px", color: "var(--text-primary)" }}>Paste anything. Hear what matters.</p>
+          <p className="app-subtitle">Paste anything. Hear what matters.</p>
         </div>
       </div>
     </header>

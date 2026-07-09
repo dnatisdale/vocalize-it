@@ -16,6 +16,9 @@ import { AmbientBackground } from "./components/layout/AmbientBackground";
 
 import { distillContent, getDistillerStats, advancedOfflineDistill } from "./utils/contentDistiller";
 import { processWithGemini } from "./services/aiService";
+import { analyzeLayout } from "./utils/layoutAnalyzer";
+import { analyzeStructuredData } from "./utils/structuredDataDetector";
+import { DatasetControls } from "./components/distillery/DatasetControls";
 
 import "./App.css";
 
@@ -44,6 +47,8 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [distillerStats, setDistillerStats] = useState("");
   const [processingModeFeedback, setProcessingModeFeedback] = useState("");
+  const [manualPasteMode, setManualPasteMode] = useState(false);
+  const [datasetInfo, setDatasetInfo] = useState(null);
   
   const [rule, setRule] = useState(() => {
     if (typeof window !== "undefined") {
@@ -123,7 +128,8 @@ function App() {
     const tpl = overrideTemplate !== null ? overrideTemplate : templateState.activeTemplate;
     const blockedPhrases = tpl ? tpl.blockedPhrases : [];
 
-    const clean = distillContent(textToDistill, { customBlockedPhrases: blockedPhrases, blocklist });
+    const layoutFixed = analyzeLayout(textToDistill);
+    const clean = distillContent(layoutFixed, { customBlockedPhrases: blockedPhrases, blocklist });
     const stats = getDistillerStats(textToDistill, clean);
     
     setProcessedText(clean);
@@ -143,12 +149,15 @@ function App() {
   const handleProcess = useCallback(async () => {
     if (!clipboardText) return;
     setIsProcessing(true);
+    setProcessedText("");
     speech.stopSpeech();
     setProcessingModeFeedback("");
 
     try {
+      const layoutFixed = analyzeLayout(clipboardText);
+
       // Phase O5: Hybrid Processing Decision Tree
-      const offlineResult = advancedOfflineDistill(clipboardText, { blocklist });
+      const offlineResult = advancedOfflineDistill(layoutFixed, { blocklist });
       const { type, confidence } = offlineResult.classification;
       const offlineEligibleTypes = ["email", "newsletter", "prayer request", "devotional"];
       
@@ -160,13 +169,12 @@ function App() {
         setProcessingModeFeedback("Processed Offline ⚡");
       } else {
         // Two-pass pipeline: Auto pre-clean before sending to AI
-        const preClean = distillContent(clipboardText, { blocklist });
+        const preClean = distillContent(layoutFixed, { blocklist });
         resultText = await processWithGemini(preClean, rule);
         setProcessingModeFeedback("Enhanced with AI ✨");
       }
       
       setProcessedText(resultText);
-
       // Autoplay removed for Issue 1 (Playback must require explicit user action)
       
       const newHistoryItem = {
@@ -187,8 +195,20 @@ function App() {
   const handleTextPaste = useCallback((text) => {
     setClipboardText(text);
     speech.stopSpeech();
+    
+    const analysis = analyzeStructuredData(text);
+    if (analysis.documentType === 'structured-data' || analysis.documentType === 'Bible-dataset') {
+      setDatasetInfo(analysis);
+      setProcessedText("");
+      setDistillerStats("");
+      return; // Do not auto-distill datasets
+    } else {
+      setDatasetInfo(null);
+    }
+
     if (rule === "distill") {
-      const clean = distillContent(text, { customBlockedPhrases: templateState.activeTemplate ? templateState.activeTemplate.blockedPhrases : [], blocklist });
+      const layoutFixed = analyzeLayout(text);
+      const clean = distillContent(layoutFixed, { customBlockedPhrases: templateState.activeTemplate ? templateState.activeTemplate.blockedPhrases : [], blocklist });
       setProcessedText(clean);
       setDistillerStats(getDistillerStats(text, clean));
     } else {
@@ -210,13 +230,11 @@ function App() {
 
   const handlePaste = async () => {
     try {
-      if (window.confirm("Do you want to paste the text from your clipboard?")) {
-        const text = await navigator.clipboard.readText();
-        handleTextPaste(text);
-      }
+      const text = await navigator.clipboard.readText();
+      handleTextPaste(text);
     } catch (err) {
       console.error("Failed to read clipboard:", err);
-      alert("Please allow clipboard permissions or manually paste the text.");
+      setManualPasteMode(true);
     }
   };
 
@@ -224,6 +242,8 @@ function App() {
     setClipboardText("");
     setProcessedText("");
     setDistillerStats("");
+    setDatasetInfo(null);
+    setManualPasteMode(false);
     speech.stopSpeech();
   };
 
@@ -353,10 +373,11 @@ function App() {
               setClipboardText={setClipboardText}
               handlePaste={handlePaste}
               handleTextPaste={handleTextPaste}
+              manualPasteMode={manualPasteMode}
             />
 
             {/* Decorative Wavy Line Divider */}
-            <div style={{ position: "relative", width: "100%", height: "24px", margin: "24px 0" }}>
+            <div className="section-divider">
               <svg 
                 style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "100vw", height: "150px", zIndex: 0, opacity: 0.15, pointerEvents: "none", color: "var(--text-secondary)" }}
                 viewBox="0 300 1440 450" 
@@ -373,19 +394,42 @@ function App() {
             </div>
 
             {clipboardText && (
-              <ActionControls 
-                rule={rule}
-                setRule={setRule}
-                handleDistill={handleDistill}
-                handleProcess={handleProcess}
-                handleClear={handleClear}
-                isProcessing={isProcessing}
-                templates={templateState.templates}
-                selectedTemplateId={templateState.selectedTemplateId}
-                handleSelectTemplate={templateState.handleSelectTemplate}
-                categoryOrder={categoryOrder}
-                setCategoryOrder={setCategoryOrder}
-              />
+              datasetInfo ? (
+                <DatasetControls 
+                  datasetInfo={datasetInfo}
+                  onCancel={handleClear}
+                  onSummarize={() => {
+                    setDatasetInfo(null);
+                    setProcessedText(`Dataset Summary:\nThis is a ${datasetInfo.documentType} with ${datasetInfo.rowCount} rows and ${datasetInfo.columnCount} columns.\n\n(Feature coming soon!)`);
+                  }}
+                  onReadColumns={(cols, limit) => {
+                    setDatasetInfo(null);
+                    setProcessedText(`Reading Columns: ${cols.join(', ')} (Max ${limit} rows)\n\n(Feature coming soon!)`);
+                  }}
+                  onNarrative={() => {
+                    setDatasetInfo(null);
+                    setProcessedText(`Converting ${datasetInfo.rowCount} rows to narrative flow...\n\n(Feature coming soon!)`);
+                  }}
+                  onExtract={() => {
+                    setDatasetInfo(null);
+                    setProcessedText(`Extracting key insights from ${datasetInfo.rowCount} rows...\n\n(Feature coming soon!)`);
+                  }}
+                />
+              ) : (
+                <ActionControls 
+                  rule={rule}
+                  setRule={setRule}
+                  handleDistill={handleDistill}
+                  handleProcess={handleProcess}
+                  handleClear={handleClear}
+                  isProcessing={isProcessing}
+                  templates={templateState.templates}
+                  selectedTemplateId={templateState.selectedTemplateId}
+                  handleSelectTemplate={templateState.handleSelectTemplate}
+                  categoryOrder={categoryOrder}
+                  setCategoryOrder={setCategoryOrder}
+                />
+              )
             )}
 
             {processedText && (
@@ -451,12 +495,14 @@ function App() {
           {typeof window !== "undefined" && (
             <div style={{ marginBottom: "16px" }}>
               <a 
-                href={window.location.href} 
+                href="https://vocalize-it-c0eda.web.app" 
                 style={{ color: "inherit", textDecoration: "none" }}
                 onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
                 onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                {window.location.href}
+                https://vocalize-it-c0eda.web.app
               </a>
             </div>
           )}

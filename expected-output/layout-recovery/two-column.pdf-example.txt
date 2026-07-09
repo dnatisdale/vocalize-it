@@ -1,0 +1,3 @@
+This is the start of the first column of text. It goes down the page vertically but when you copy and paste it, it often gets mixed horizontally with the second column.
+
+This is the start of the second column of text. It continues the thought from the first column, but PDF extractors often mix the lines together like this. It makes reading impossible.

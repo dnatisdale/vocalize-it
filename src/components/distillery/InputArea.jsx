@@ -1,10 +1,10 @@
 import React from "react";
 import { ClipboardIcon } from "../shared/Icons";
 
-export function InputArea({ clipboardText, setClipboardText, handlePaste, handleTextPaste }) {
-  if (!clipboardText) {
+export function InputArea({ clipboardText, setClipboardText, handlePaste, handleTextPaste, manualPasteMode }) {
+  if (!clipboardText && !manualPasteMode) {
     return (
-      <button onClick={handlePaste} className="paste-hero-btn" style={{ padding: "32px", fontSize: "1.2rem" }}>
+      <button onClick={handlePaste} className="paste-hero-btn">
         Paste Text to Listen
         <span style={{ fontSize: "0.9rem", opacity: 0.8, marginTop: "8px" }}>Click here to paste an email, newsletter, article, or document</span>
       </button>
@@ -26,6 +26,7 @@ export function InputArea({ clipboardText, setClipboardText, handlePaste, handle
             }
           }}
           className="modern-textarea"
+          autoFocus={manualPasteMode}
           placeholder="Paste email, newsletter, article, PDF text, devotional, report, or any document..."
         />
         <span className="char-counter">{clipboardText.length} chars</span>

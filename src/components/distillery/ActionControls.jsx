@@ -92,10 +92,15 @@ export function ActionControls({
         <button
           onClick={onListenBetter}
           disabled={isProcessing}
-          className="btn btn-primary"
-          style={{ flex: 1, padding: "16px", fontSize: "1.2rem", fontWeight: "bold" }}
+          className="btn btn-primary btn-action-main"
         >
-          {isProcessing ? "Processing..." : <><HeadphoneIcon /><b>Listen Better</b></>}
+          {isProcessing ? "Processing..." : (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.15em", pointerEvents: "none" }}>
+              <HeadphoneIcon />
+              <span className="listen-word">Listen</span>
+              <span className="better-word">Better</span>
+            </div>
+          )}
         </button>
         <button onClick={handleClear} className="btn btn-secondary" style={{ padding: "0 24px" }} title="Clear Text">
           × Clear
