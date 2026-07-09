@@ -70,17 +70,20 @@ export function ActionControls({
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const onListenBetter = () => {
-    // Force listenmode processing
+    // FIX: Pass the rule directly as an override so handleProcess uses "listenmode"
+    // immediately — setRule() is async and would run AFTER handleProcess() fires,
+    // causing the wrong prompt to be sent to Gemini (the race condition bug).
     setRule("listenmode");
-    handleProcess();
+    handleProcess("listenmode");
   };
 
   const handleAdvancedToolSelect = (val) => {
+    // FIX: Same race condition fix — pass val directly as rule override.
     setRule(val);
     if (val === "distill") {
       handleDistill();
     } else {
-      handleProcess();
+      handleProcess(val);
     }
   };
 
@@ -114,11 +117,12 @@ export function AdvancedTools({ rule, setRule, handleDistill, handleProcess, isP
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const handleAdvancedToolSelect = (val) => {
+    // FIX: Pass val directly as rule override — same race condition fix as ActionControls.
     setRule(val);
     if (val === "distill") {
       handleDistill();
     } else {
-      handleProcess();
+      handleProcess(val);
     }
   };
 
