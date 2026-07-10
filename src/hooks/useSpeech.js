@@ -1,39 +1,67 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { optimizeForSpeech } from "../utils/ttsOptimizer";
 
-// ─── Silent AudioContext Keepalive ──────────────────────────────────────────
+// ─── AudioContext Keepalive ──────────────────────────────────────────────────
 //
-// Android Chrome pauses SpeechSynthesis whenever there is no active audio
-// stream (screen lock, app switch). Holding an AudioContext open with a
-// looping silent buffer convinces the OS that media is actively playing,
-// keeping audio focus and allowing SpeechSynthesis to continue uninterrupted.
+// Android Chrome pauses SpeechSynthesis when there is no active audio stream.
+// We keep an AudioContext open with a near-silent oscillator (gain 0.001 —
+// inaudible but a REAL audio signal). An all-zero silent buffer is detected
+// by Android as silence and killed to save battery. An oscillator is not.
 //
-// This must be created from a user gesture (button click) — which is already
-// satisfied because playback only starts from the Play button.
+// Must be created inside a user gesture — satisfied by the Play button.
 
-function createSilentKeepAlive() {
+function createAudioKeepAlive() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return null;
 
     const ctx = new AudioCtx();
 
-    // 0.5 s of silence (all zeros), looped forever
-    const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.5), ctx.sampleRate);
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-    source.connect(ctx.destination);
-    source.start(0);
+    // Use an oscillator at near-zero gain — produces a real (inaudible) signal
+    // that the OS treats as active audio, unlike an all-zero buffer.
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 0.001; // ~60 dB below audible threshold
+    oscillator.frequency.value = 440;
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    oscillator.start(0);
 
-    return { ctx, source };
+    return { ctx, source: oscillator };
   } catch (e) {
     console.warn("[useSpeech] AudioContext keepalive creation failed:", e);
     return null;
   }
 }
 
-function destroySilentKeepAlive(keepAlive) {
+// ─── Screen Wake Lock ────────────────────────────────────────────────────────
+//
+// Prevents the phone screen from auto-locking during playback. When the screen
+// stays on, Android does not throttle the page or suspend SpeechSynthesis.
+// The lock is released automatically when speech ends or is paused.
+
+async function requestWakeLock() {
+  if (typeof navigator === "undefined" || !("wakeLock" in navigator)) return null;
+  try {
+    const lock = await navigator.wakeLock.request("screen");
+    console.log("[useSpeech] Screen wake lock acquired");
+    return lock;
+  } catch (e) {
+    // Low battery or page not visible — non-fatal
+    console.warn("[useSpeech] Wake lock request failed:", e.message);
+    return null;
+  }
+}
+
+async function releaseWakeLock(lock) {
+  if (!lock) return;
+  try {
+    await lock.release();
+    console.log("[useSpeech] Screen wake lock released");
+  } catch (_) {}
+}
+
+function destroyAudioKeepAlive(keepAlive) {
   if (!keepAlive) return;
   try {
     keepAlive.source.stop();
@@ -113,9 +141,13 @@ export function useSpeech(defaultRate = 1.0) {
 
   const utteranceRef = useRef(null);
   const keepAliveRef = useRef(null);       // { ctx, source } | null
+  const wakeLockRef = useRef(null);        // WakeLockSentinel | null
   const isPlayingRef = useRef(false);      // mirrors isPlaying for event handlers
   const isPausedRef = useRef(false);       // mirrors isPaused for event handlers
-  const currentTextRef = useRef("");       // for visibilitychange resume
+  const currentTextRef = useRef("");       // text to restart if speech dies on unlock
+  const currentVoiceRef = useRef("");      // voice to restart with
+  const currentRateRef = useRef(1.0);      // rate to restart with
+  const currentVoicesRef = useRef([]);     // voice list to restart with
 
   // Keep refs in sync with state so event listeners always see current values
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
@@ -188,37 +220,83 @@ export function useSpeech(defaultRate = 1.0) {
     return () => clearInterval(heartbeat);
   }, [isPlaying, isPaused]);
 
-  // ── visibilitychange — resume speech on return from background ─────────────
+  // ── visibilitychange — resume or restart speech on screen unlock ───────────
   //
-  // Android Chrome can pause SpeechSynthesis when the screen locks, even with
-  // the AudioContext keepalive. When the user unlocks/returns, we call resume()
-  // to restart it from where it left off.
+  // Screen Wake Lock is released by the OS whenever the page becomes hidden
+  // (manual power button press or app switch). We re-acquire it on return.
+  //
+  // Android can also kill SpeechSynthesis while hidden. On return we check if
+  // speechSynthesis.speaking is false despite us thinking we're playing — if
+  // so, restart from scratch (we can't resume from position with Web Speech API).
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!window.speechSynthesis) return;
 
       if (document.hidden) {
-        // Going to background — resume() nudge keeps the speech queue active
-        // in some Android Chrome versions that pause on hide
+        // Going to background — nudge the speech queue; some Android versions
+        // pause on hide and this prevents that.
         if (isPlayingRef.current && !isPausedRef.current) {
           try { window.speechSynthesis.resume(); } catch (_) {}
         }
       } else {
-        // Returning to foreground — if we were playing, try to resume
+        // ── Returning to foreground ──────────────────────────────────────────
         if (isPlayingRef.current && !isPausedRef.current) {
-          try {
-            window.speechSynthesis.resume();
-          } catch (_) {}
-          // Also resume AudioContext if it was suspended by the OS
+          // Re-acquire wake lock (released automatically when page was hidden)
+          requestWakeLock().then((lock) => { wakeLockRef.current = lock; });
+
+          // Resume AudioContext if OS suspended it
           if (keepAliveRef.current?.ctx?.state === "suspended") {
             keepAliveRef.current.ctx.resume().catch(() => {});
+          }
+
+          // Check if speech actually survived the screen-off
+          if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
+            // Speech died while screen was off — restart from the beginning
+            console.log("[useSpeech] Speech died on screen lock — restarting");
+            const text = currentTextRef.current;
+            const voice = currentVoiceRef.current;
+            const rate = currentRateRef.current;
+            const voiceList = currentVoicesRef.current;
+            if (text) {
+              // Small delay to let the page fully resume
+              setTimeout(() => {
+                destroyAudioKeepAlive(keepAliveRef.current);
+                keepAliveRef.current = createAudioKeepAlive();
+                window.speechSynthesis.cancel();
+                const optimizedText = optimizeForSpeech(text);
+                const utterance = new SpeechSynthesisUtterance(optimizedText);
+                const voiceObj = voice ? voiceList.find((v) => v.name === voice) : null;
+                if (voiceObj) utterance.voice = voiceObj;
+                utterance.rate = rate;
+                utterance.onend = () => {
+                  setIsPlaying(false); setIsPaused(false);
+                  destroyAudioKeepAlive(keepAliveRef.current);
+                  keepAliveRef.current = null;
+                  releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
+                  clearMediaSession();
+                };
+                utterance.onerror = (e) => {
+                  if (e.error !== "interrupted" && e.error !== "canceled") {
+                    console.error("[useSpeech] Restart error:", e);
+                  }
+                  setIsPlaying(false); setIsPaused(false);
+                  destroyAudioKeepAlive(keepAliveRef.current);
+                  keepAliveRef.current = null;
+                  releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
+                  clearMediaSession();
+                };
+                window.speechSynthesis.speak(utterance);
+              }, 300);
+            }
+          } else {
+            // Speech survived — just call resume() to make sure it's running
+            try { window.speechSynthesis.resume(); } catch (_) {}
           }
         }
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    // pagehide fires on some Android WebViews when the page is backgrounded
     window.addEventListener("pagehide", handleVisibilityChange);
 
     return () => {
@@ -227,11 +305,12 @@ export function useSpeech(defaultRate = 1.0) {
     };
   }, []); // intentionally empty — uses refs for current state
 
-  // ── Teardown keepalive on unmount ──────────────────────────────────────────
+  // ── Teardown keepalive and wake lock on unmount ────────────────────────────
   useEffect(() => {
     return () => {
-      destroySilentKeepAlive(keepAliveRef.current);
+      destroyAudioKeepAlive(keepAliveRef.current);
       keepAliveRef.current = null;
+      releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
       clearMediaSession();
     };
   }, []);
@@ -245,8 +324,9 @@ export function useSpeech(defaultRate = 1.0) {
     utterance.onend = () => {
       setIsPlaying(false);
       setIsPaused(false);
-      destroySilentKeepAlive(keepAliveRef.current);
+      destroyAudioKeepAlive(keepAliveRef.current);
       keepAliveRef.current = null;
+      releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
       clearMediaSession();
     };
 
@@ -257,8 +337,9 @@ export function useSpeech(defaultRate = 1.0) {
       }
       setIsPlaying(false);
       setIsPaused(false);
-      destroySilentKeepAlive(keepAliveRef.current);
+      destroyAudioKeepAlive(keepAliveRef.current);
       keepAliveRef.current = null;
+      releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
       clearMediaSession();
     };
   }, []);
@@ -268,8 +349,9 @@ export function useSpeech(defaultRate = 1.0) {
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
-    destroySilentKeepAlive(keepAliveRef.current);
+    destroyAudioKeepAlive(keepAliveRef.current);
     keepAliveRef.current = null;
+    releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
     clearMediaSession();
     setIsPlaying(false);
     setIsPaused(false);
@@ -282,15 +364,23 @@ export function useSpeech(defaultRate = 1.0) {
     const voiceObj = voiceName ? voiceList.find((v) => v.name === voiceName) : null;
 
     attachUtteranceEvents(utterance, voiceObj, speechRate);
+
+    // Store context so visibilitychange can restart if speech dies on lock
     currentTextRef.current = textToSpeak;
+    currentVoiceRef.current = voiceName;
+    currentRateRef.current = speechRate;
+    currentVoicesRef.current = voiceList;
 
     // Android lock fix: call resume() before speak() to unblock the queue
     window.speechSynthesis.resume();
     window.speechSynthesis.cancel();
 
-    // Start silent AudioContext BEFORE speak() so audio focus is claimed first
-    destroySilentKeepAlive(keepAliveRef.current);
-    keepAliveRef.current = createSilentKeepAlive();
+    // Start oscillator AudioContext BEFORE speak() to claim audio focus first
+    destroyAudioKeepAlive(keepAliveRef.current);
+    keepAliveRef.current = createAudioKeepAlive();
+
+    // Request screen wake lock — prevents auto-lock during playback
+    requestWakeLock().then((lock) => { wakeLockRef.current = lock; });
 
     window.speechSynthesis.speak(utterance);
 
