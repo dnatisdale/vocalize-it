@@ -4,9 +4,18 @@ import { optimizeForSpeech } from "../utils/ttsOptimizer";
 // ─── AudioContext Keepalive ──────────────────────────────────────────────────
 //
 // Android Chrome pauses SpeechSynthesis when there is no active audio stream.
-// We keep an AudioContext open with a near-silent oscillator (gain 0.001 —
-// inaudible but a REAL audio signal). An all-zero silent buffer is detected
-// by Android as silence and killed to save battery. An oscillator is not.
+// Two-layer defence:
+//
+//  1. LOOPING AUDIOBUFFER — a short buffer filled with tiny non-zero samples
+//     (±0.0001) played on a looping AudioBufferSourceNode. Android's battery
+//     optimiser is much better at detecting a near-zero *oscillator* as silence
+//     than a genuinely looping buffer with non-zero content.
+//
+//  2. MEDIASTREAM → <audio> ELEMENT — the AudioContext graph is also routed
+//     through a MediaStreamAudioDestinationNode into a hidden <audio> element.
+//     This makes Android classify the page as an active media player (same
+//     bucket as Spotify / podcast apps), not a generic browser tab, giving it
+//     a far stronger signal to keep the page alive.
 //
 // Must be created inside a user gesture — satisfied by the Play button.
 
@@ -17,17 +26,51 @@ function createAudioKeepAlive() {
 
     const ctx = new AudioCtx();
 
-    // Use an oscillator at near-zero gain — produces a real (inaudible) signal
-    // that the OS treats as active audio, unlike an all-zero buffer.
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = 0.001; // ~60 dB below audible threshold
-    oscillator.frequency.value = 440;
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    oscillator.start(0);
+    // ── Layer 1: Looping AudioBuffer with non-zero samples ──────────────────
+    // A 1-second mono buffer at the context's sample rate, filled with a tiny
+    // alternating signal. Non-zero content is harder for Android to classify
+    // as silence than an oscillator through a near-zero gain node.
+    const bufferSize = ctx.sampleRate; // 1 second of samples
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      // Alternate sign so it's not DC-offset; amplitude is well below audible.
+      data[i] = (i % 2 === 0 ? 1 : -1) * 0.0001;
+    }
 
-    return { ctx, source: oscillator };
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 1; // gain stays at 1 — the buffer amplitude is tiny
+    source.connect(gainNode);
+
+    // ── Layer 2: MediaStream → hidden <audio> element ────────────────────────
+    // Route the graph to a MediaStreamDestinationNode and pipe it into a real
+    // <audio> element. This registers the page as an active media source with
+    // the OS, preventing Android from throttling or suspending the tab.
+    let audioEl = null;
+    try {
+      const streamDest = ctx.createMediaStreamDestination();
+      gainNode.connect(streamDest);
+      gainNode.connect(ctx.destination); // also keep direct connection
+
+      audioEl = document.createElement("audio");
+      audioEl.srcObject = streamDest.stream;
+      audioEl.volume = 0;   // silent to the user
+      audioEl.muted = false; // NOT muted — muted elements don't count as active media
+      audioEl.play().catch(() => {}); // may fail if autoplay policy blocks it; non-fatal
+    } catch (streamErr) {
+      // MediaStreamDestination not supported — fall back to direct destination only
+      gainNode.connect(ctx.destination);
+      console.warn("[useSpeech] MediaStream keepalive not available:", streamErr);
+    }
+
+    source.start(0);
+
+    console.log("[useSpeech] AudioContext keepalive started (buffer+stream)");
+    return { ctx, source, audioEl };
   } catch (e) {
     console.warn("[useSpeech] AudioContext keepalive creation failed:", e);
     return null;
@@ -70,6 +113,14 @@ function destroyAudioKeepAlive(keepAlive) {
   } catch (_) {
     // Safe to ignore on teardown
   }
+  // Clean up the hidden <audio> element used for the MediaStream keepalive
+  try {
+    if (keepAlive.audioEl) {
+      keepAlive.audioEl.pause();
+      keepAlive.audioEl.srcObject = null;
+      keepAlive.audioEl = null;
+    }
+  } catch (_) {}
 }
 
 // ─── Media Session API ───────────────────────────────────────────────────────
