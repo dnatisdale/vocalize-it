@@ -407,7 +407,14 @@ export function useSpeech(defaultRate = 1.0) {
       const url = URL.createObjectURL(finalBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `ListenBetter_Audio.mp3`;
+      
+      // Create a formatted date-time string (e.g., 2026-07-10_14-30-45)
+      const now = new Date();
+      const pad = (n) => n.toString().padStart(2, '0');
+      const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      const timeStr = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+      
+      a.download = `ListenBetter_${dateStr}_${timeStr}.mp3`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
