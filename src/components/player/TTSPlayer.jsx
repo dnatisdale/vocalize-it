@@ -51,7 +51,7 @@ export function TTSPlayer({
               Playing...
             </span>
           ) : (
-            <span>{isPlaying && isPaused ? "▶ Resume" : "▶ Play"}</span>
+            <span>{isPlaying && isPaused ? "▶" : "▶ Play"}</span>
           )}
         </button>
         <button onClick={() => downloadMP3(processedText || clipboardText)} className="btn btn-mp3" style={{ flex: 1, minWidth: "70px" }} title="Save as MP3" disabled={isDownloading}>
