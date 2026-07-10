@@ -21,6 +21,33 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "prompt",
+      // Remove stale precache entries automatically on SW activation.
+      // Prevents Android PWA from serving outdated JS after a new deploy.
+      workbox: {
+        cleanupOutdatedCaches: true,
+        // Firebase callable HTTPS endpoints must NEVER be served from SW cache.
+        // NetworkOnly ensures every processClip call goes to the live network.
+        runtimeCaching: [
+          {
+            // Match Firebase Callable Functions (us-central1 and regional)
+            urlPattern: /https:\/\/.*\.cloudfunctions\.net\/.*|https:\/\/.*\.run\.app\/.*/,
+            handler: "NetworkOnly",
+            options: {
+              cacheName: "firebase-callable-nocache",
+            },
+          },
+          {
+            // Firebase Hosting assets: use NetworkFirst so updates deploy promptly.
+            // Falls back to cache only when genuinely offline.
+            urlPattern: /^https:\/\/vocalize-it-c0eda\.web\.app\/.*/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "firebase-hosting",
+              networkTimeoutSeconds: 5,
+            },
+          },
+        ],
+      },
       manifest: {
         name: "Listen Better",
         short_name: "Listen Better",

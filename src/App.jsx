@@ -146,12 +146,26 @@ function App() {
     setHistory(prev => [newHistoryItem, ...(prev || []).slice(0, 9)]);
   }, [clipboardText, templateState.activeTemplate, speech, setHistory, blocklist]);
 
-  const handleProcess = useCallback(async () => {
+  const handleProcess = useCallback(async (ruleOverride = null) => {
     if (!clipboardText) return;
+
+    // Use the explicitly passed rule override (from button click) or fall back
+    // to the current rule state. This eliminates the race condition where
+    // setRule() is async and the closure captures the old value.
+    const effectiveRule = ruleOverride !== null ? ruleOverride : rule;
+
+    // Pre-flight: catch obvious offline state before attempting the network call
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setProcessedText("You appear to be offline. Please check your connection and try again.");
+      return;
+    }
+
     setIsProcessing(true);
     setProcessedText("");
     speech.stopSpeech();
     setProcessingModeFeedback("");
+
+    console.log(`[App] handleProcess — effectiveRule="${effectiveRule}", stateRule="${rule}", textLength=${clipboardText.length}, online=${navigator.onLine}`);
 
     try {
       const layoutFixed = analyzeLayout(clipboardText);
@@ -167,10 +181,12 @@ function App() {
         // Process offline instantly
         resultText = offlineResult.cleanedText;
         setProcessingModeFeedback("Processed Offline ⚡");
+        console.log(`[App] Offline path taken — type="${type}", confidence=${confidence}`);
       } else {
         // Two-pass pipeline: Auto pre-clean before sending to AI
         const preClean = distillContent(layoutFixed, { blocklist });
-        resultText = await processWithGemini(preClean, rule);
+        console.log(`[App] AI path — sending ${preClean.length} chars with rule="${effectiveRule}"`);
+        resultText = await processWithGemini(preClean, effectiveRule);
         setProcessingModeFeedback("Enhanced with AI ✨");
       }
       
@@ -181,12 +197,14 @@ function App() {
         id: generateHistoryId(),
         originalText: clipboardText,
         processedText: resultText,
-        rule: rule,
+        rule: effectiveRule,
         timestamp: new Date().toLocaleString(),
       };
       setHistory(prev => [newHistoryItem, ...(prev || []).slice(0, 9)]);
     } catch (error) {
-      setProcessedText(error.message);
+      // Display the real diagnostic error message from aiService (not a generic string)
+      console.error("[App] handleProcess error:", error);
+      setProcessedText(`⚠️ ${error.message || "An unexpected error occurred."}`);
     } finally {
       setIsProcessing(false);
     }
