@@ -164,6 +164,30 @@ export function useSpeech(defaultRate = 1.0) {
     };
   }, [selectedVoice]);
 
+  // ── Periodic resume() heartbeat — keeps Android from killing speech on lock ──
+  //
+  // Android Chrome can silently pause SpeechSynthesis when the screen locks,
+  // even with the AudioContext keepalive. Calling resume() every 5 s is
+  // harmless if speech is already running, but wakes it back up if the OS
+  // paused it behind the scenes.
+  useEffect(() => {
+    if (!isPlaying || isPaused) return;
+
+    const heartbeat = setInterval(() => {
+      if (!window.speechSynthesis) return;
+      // Only nudge if not manually paused
+      if (!isPausedRef.current && isPlayingRef.current) {
+        try { window.speechSynthesis.resume(); } catch (_) {}
+        // Also kick the AudioContext if it got suspended
+        if (keepAliveRef.current?.ctx?.state === "suspended") {
+          keepAliveRef.current.ctx.resume().catch(() => {});
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(heartbeat);
+  }, [isPlaying, isPaused]);
+
   // ── visibilitychange — resume speech on return from background ─────────────
   //
   // Android Chrome can pause SpeechSynthesis when the screen locks, even with

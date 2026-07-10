@@ -3,8 +3,9 @@ import { app } from "../firebase/firebase";
 
 // Timeout (ms) for the Firebase callable. Gemini 2.5 Flash is fast but on
 // marginal Android networks a cold-start + long input can take 15–20 s.
+// Large texts (newsletters, long articles) can take 40–55 s on slow connections.
 // We surface a clear timeout message instead of hanging indefinitely.
-const CALLABLE_TIMEOUT_MS = 30_000;
+const CALLABLE_TIMEOUT_MS = 60_000;
 
 /**
  * Wraps a Promise with a timeout. Rejects with a labelled error if the

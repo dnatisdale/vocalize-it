@@ -129,7 +129,15 @@ ${text}
   default: (text) => `Process the following text: ${text}`,
 };
 
-exports.processClip = onCall({ cors: true }, async (request) => {
+exports.processClip = onCall(
+  {
+    cors: true,
+    // Large texts (newsletters, long articles) can take Gemini 40-55 s on cold starts.
+    // Bump to 120 s so the function never races the default 60 s deadline.
+    timeoutSeconds: 120,
+    memory: "256MiB",
+  },
+  async (request) => {
   const startMs = Date.now();
   const { text, rule } = request.data;
 
