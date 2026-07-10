@@ -261,6 +261,7 @@ exports.synthesizeSpeech = onCall(
   },
   async (request) => {
     const { text, voiceName, speakingRate } = request.data;
+    // Dummy comment to force redeploy 2
 
     // ── Input validation ──────────────────────────────────────────────────────
     if (!text || typeof text !== "string" || text.trim().length === 0) {
