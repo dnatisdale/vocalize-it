@@ -492,6 +492,11 @@ function App() {
                   onDragEnd={() => {}}
                   getRuleLabel={getRuleLabel}
                   handleAddToBlocklist={handleAddToBlocklist}
+                  rate={speech.rate}
+                  voices={speech.voices}
+                  selectedVoice={speech.selectedVoice}
+                  handleRateChange={speech.handleRateChange}
+                  handleVoiceChange={speech.handleVoiceChange}
                 />
               </div>
             )}

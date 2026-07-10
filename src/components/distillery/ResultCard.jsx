@@ -16,9 +16,15 @@ export function ResultCard({
   onDragOver,
   onDragEnd,
   getRuleLabel,
-  handleAddToBlocklist
+  handleAddToBlocklist,
+  rate,
+  voices,
+  selectedVoice,
+  handleRateChange,
+  handleVoiceChange
 }) {
   const [confirmBlock, setConfirmBlock] = React.useState(null);
+  const [showSettings, setShowSettings] = React.useState(false);
 
   if (!clipboardText || (rule !== "distill" && !processedText)) return null;
 
@@ -45,9 +51,59 @@ export function ResultCard({
             </span>
           )}
           {renderLayoutGrip("distillery")}
-          <span className="result-badge">{getRuleLabel(rule)}</span>
+          
+          {rule !== "distill" && rate && (
+            <div style={{ display: "flex", alignItems: "center", gap: "4px", background: "var(--bg-input)", padding: "2px 8px", borderRadius: "12px", border: "1px solid var(--border-color)" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: "600" }}>{Number(rate).toFixed(2)}x</span>
+              <button 
+                onClick={() => setShowSettings(!showSettings)}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: "0 4px", fontSize: "0.9rem" }}
+                title="Settings"
+              >
+                ⚙️
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {showSettings && rule !== "distill" && (
+        <div className="speed-slider-group" style={{ marginBottom: "16px", paddingBottom: "16px", borderBottom: "1px solid var(--border-color)", animation: "fadeIn 0.2s ease-out" }}>
+          <div className="slider-label" style={{ marginBottom: "8px", display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: "600" }}>Speech Rate: {Number(rate).toFixed(2)}x</span>
+            {rate !== 1.0 && (
+              <span onClick={() => handleRateChange(1.0, processedText || clipboardText)} style={{ fontSize: "0.8rem", color: "var(--color-primary)", cursor: "pointer" }}>Reset to 1.0x</span>
+            )}
+          </div>
+          <div style={{ marginBottom: "16px" }}>
+            <input
+              type="range"
+              min="0.5"
+              max="1.5"
+              step="0.05"
+              value={rate}
+              onChange={(e) => handleRateChange(parseFloat(e.target.value), processedText || clipboardText)}
+              className="modern-slider"
+              style={{ width: "100%", height: "6px", borderRadius: "3px", appearance: "none", background: "var(--border-color)", outline: "none", marginTop: "8px" }}
+            />
+          </div>
+
+          <div className="select-wrapper" style={{ minWidth: "100%" }}>
+            <select
+              value={selectedVoice}
+              onChange={(e) => handleVoiceChange(e.target.value, processedText || clipboardText)}
+              className="modern-select"
+              style={{ padding: "12px 14px", fontSize: "0.95rem" }}
+            >
+              {voices?.map((v) => (
+                <option key={v.name} value={v.name}>
+                  {v.name} ({v.lang}) {v.localService ? "[Offline]" : "[Cloud]"}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {rule === "distill" && distillerStats && (
         <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "12px", fontStyle: "italic" }}>
@@ -97,6 +153,12 @@ export function ResultCard({
               </div>
             </div>
           ))}
+        </div>
+      )}
+      
+      {rule !== "distill" && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "16px" }}>
+          <span className="result-badge">{getRuleLabel(rule)}</span>
         </div>
       )}
     </div>
