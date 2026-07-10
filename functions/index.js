@@ -220,11 +220,12 @@ exports.processClip = onCall(
     });
 
     // Surface a meaningful error to the client (not just "internal")
+    const isRateLimit = error.message && error.message.includes("429");
     const detail = error.message
       ? `Gemini error: ${error.message.slice(0, 200)}`
       : "Failed to process text with Gemini.";
 
-    throw new HttpsError("internal", detail);
+    throw new HttpsError(isRateLimit ? "resource-exhausted" : "unavailable", detail);
   }
 });
 
