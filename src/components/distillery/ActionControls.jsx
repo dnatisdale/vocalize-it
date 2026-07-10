@@ -105,7 +105,7 @@ export function ActionControls({
             </div>
           )}
         </button>
-        <button onClick={handleClear} className="btn btn-clear-red" style={{ padding: "0 20px", fontSize: "1.2rem", fontWeight: "bold" }} title="Clear Text">
+        <button onClick={handleClear} className="btn btn-secondary" style={{ padding: "0 20px", fontSize: "1.2rem", fontWeight: "bold" }} title="Clear Text">
           X
         </button>
       </div>

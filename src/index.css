@@ -515,17 +515,6 @@ body {
   transform: translateY(-1px);
 }
 
-.btn-clear-red {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: #ffffff;
-  border: none;
-}
-
-.btn-clear-red:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-  transform: translateY(-1px);
-}
-
 .btn-danger-outline {
   background: transparent;
   border: 1px solid var(--color-danger);
