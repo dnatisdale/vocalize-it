@@ -1,88 +1,63 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { optimizeForSpeech } from "../utils/ttsOptimizer";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { app } from "../firebase/firebase";
 
-// ─── AudioContext Keepalive ──────────────────────────────────────────────────
+// ─── Cloud TTS Audio Pipeline ─────────────────────────────────────────────────
 //
-// Android Chrome pauses SpeechSynthesis when there is no active audio stream.
-// Two-layer defence:
+// Replaces Web Speech API (SpeechSynthesis) with real audio playback:
 //
-//  1. LOOPING AUDIOBUFFER — a short buffer filled with tiny non-zero samples
-//     (±0.0001) played on a looping AudioBufferSourceNode. Android's battery
-//     optimiser is much better at detecting a near-zero *oscillator* as silence
-//     than a genuinely looping buffer with non-zero content.
+//  1. Text is split into chunks (~4,000 chars, breaking at sentence boundaries).
+//  2. Each chunk is sent to the synthesizeSpeech Cloud Function, which calls
+//     Google Cloud TTS and returns base64-encoded MP3.
+//  3. The MP3 is decoded and played through an <audio> element.
+//  4. The OS treats <audio> playback as real media — it survives screen-off on
+//     Android and iOS, unlike SpeechSynthesis which the OS kills on lock.
+//  5. The next chunk is pre-fetched while the current one plays (gapless queue).
 //
-//  2. MEDIASTREAM → <audio> ELEMENT — the AudioContext graph is also routed
-//     through a MediaStreamAudioDestinationNode into a hidden <audio> element.
-//     This makes Android classify the page as an active media player (same
-//     bucket as Spotify / podcast apps), not a generic browser tab, giving it
-//     a far stronger signal to keep the page alive.
-//
-// Must be created inside a user gesture — satisfied by the Play button.
+// Voice: Google Cloud TTS Neural2 voices (higher quality than device voices).
+// Fallback: If the Cloud Function fails, falls back to Web Speech API.
 
-function createAudioKeepAlive() {
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return null;
+const CHUNK_SIZE = 4000; // chars — safely under Cloud TTS 5000-byte limit
+const SENTENCE_ENDINGS = /(?<=[.!?])\s+/;
 
-    const ctx = new AudioCtx();
+// Split text at sentence boundaries, keeping chunks under CHUNK_SIZE
+function splitIntoChunks(text) {
+  const sentences = text.split(SENTENCE_ENDINGS);
+  const chunks = [];
+  let current = "";
 
-    // ── Layer 1: Looping AudioBuffer with non-zero samples ──────────────────
-    // A 1-second mono buffer at the context's sample rate, filled with a tiny
-    // alternating signal. Non-zero content is harder for Android to classify
-    // as silence than an oscillator through a near-zero gain node.
-    const bufferSize = ctx.sampleRate; // 1 second of samples
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      // Alternate sign so it's not DC-offset; amplitude is well below audible.
-      data[i] = (i % 2 === 0 ? 1 : -1) * 0.0001;
+  for (const sentence of sentences) {
+    if ((current + " " + sentence).trim().length > CHUNK_SIZE) {
+      if (current.trim()) chunks.push(current.trim());
+      // If a single sentence is too long, hard-split it
+      if (sentence.length > CHUNK_SIZE) {
+        for (let i = 0; i < sentence.length; i += CHUNK_SIZE) {
+          chunks.push(sentence.slice(i, i + CHUNK_SIZE));
+        }
+        current = "";
+      } else {
+        current = sentence;
+      }
+    } else {
+      current = current ? current + " " + sentence : sentence;
     }
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = 1; // gain stays at 1 — the buffer amplitude is tiny
-    source.connect(gainNode);
-
-    // ── Layer 2: MediaStream → hidden <audio> element ────────────────────────
-    // Route the graph to a MediaStreamDestinationNode and pipe it into a real
-    // <audio> element. This registers the page as an active media source with
-    // the OS, preventing Android from throttling or suspending the tab.
-    let audioEl = null;
-    try {
-      const streamDest = ctx.createMediaStreamDestination();
-      gainNode.connect(streamDest);
-      gainNode.connect(ctx.destination); // also keep direct connection
-
-      audioEl = document.createElement("audio");
-      audioEl.srcObject = streamDest.stream;
-      audioEl.volume = 0;   // silent to the user
-      audioEl.muted = false; // NOT muted — muted elements don't count as active media
-      audioEl.play().catch(() => {}); // may fail if autoplay policy blocks it; non-fatal
-    } catch (streamErr) {
-      // MediaStreamDestination not supported — fall back to direct destination only
-      gainNode.connect(ctx.destination);
-      console.warn("[useSpeech] MediaStream keepalive not available:", streamErr);
-    }
-
-    source.start(0);
-
-    console.log("[useSpeech] AudioContext keepalive started (buffer+stream)");
-    return { ctx, source, audioEl };
-  } catch (e) {
-    console.warn("[useSpeech] AudioContext keepalive creation failed:", e);
-    return null;
   }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
 }
 
-// ─── Screen Wake Lock ────────────────────────────────────────────────────────
-//
-// Prevents the phone screen from auto-locking during playback. When the screen
-// stays on, Android does not throttle the page or suspend SpeechSynthesis.
-// The lock is released automatically when speech ends or is paused.
+// Convert base64 MP3 to an object URL for the <audio> element
+function base64ToObjectUrl(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: "audio/mpeg" });
+  return URL.createObjectURL(blob);
+}
 
+// ─── Screen Wake Lock ─────────────────────────────────────────────────────────
 async function requestWakeLock() {
   if (typeof navigator === "undefined" || !("wakeLock" in navigator)) return null;
   try {
@@ -90,7 +65,6 @@ async function requestWakeLock() {
     console.log("[useSpeech] Screen wake lock acquired");
     return lock;
   } catch (e) {
-    // Low battery or page not visible — non-fatal
     console.warn("[useSpeech] Wake lock request failed:", e.message);
     return null;
   }
@@ -104,31 +78,7 @@ async function releaseWakeLock(lock) {
   } catch (_) {}
 }
 
-function destroyAudioKeepAlive(keepAlive) {
-  if (!keepAlive) return;
-  try {
-    keepAlive.source.stop();
-    keepAlive.source.disconnect();
-    keepAlive.ctx.close();
-  } catch (_) {
-    // Safe to ignore on teardown
-  }
-  // Clean up the hidden <audio> element used for the MediaStream keepalive
-  try {
-    if (keepAlive.audioEl) {
-      keepAlive.audioEl.pause();
-      keepAlive.audioEl.srcObject = null;
-      keepAlive.audioEl = null;
-    }
-  } catch (_) {}
-}
-
-// ─── Media Session API ───────────────────────────────────────────────────────
-//
-// Registers with Android's media system. This makes the lock screen and
-// notification shade show play/pause/stop controls for Listen Better,
-// and tells the OS this page owns audio focus.
-
+// ─── Media Session API ────────────────────────────────────────────────────────
 function setMediaSessionPlaying(title, handlers) {
   if (!("mediaSession" in navigator)) return;
   try {
@@ -141,7 +91,6 @@ function setMediaSessionPlaying(title, handlers) {
       ],
     });
     navigator.mediaSession.playbackState = "playing";
-
     if (handlers) {
       navigator.mediaSession.setActionHandler("play", handlers.play);
       navigator.mediaSession.setActionHandler("pause", handlers.pause);
@@ -154,9 +103,7 @@ function setMediaSessionPlaying(title, handlers) {
 
 function setMediaSessionPaused() {
   if (!("mediaSession" in navigator)) return;
-  try {
-    navigator.mediaSession.playbackState = "paused";
-  } catch (_) {}
+  try { navigator.mediaSession.playbackState = "paused"; } catch (_) {}
 }
 
 function clearMediaSession() {
@@ -170,319 +117,236 @@ function clearMediaSession() {
   } catch (_) {}
 }
 
-// ─── Hook ────────────────────────────────────────────────────────────────────
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useSpeech(defaultRate = 1.0) {
-  const [voices, setVoices] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("vocalize_selected_voice") || "";
-    }
-    return "";
-  });
+  // Cloud TTS uses Neural2 voice names; we map a friendly default
+  const CLOUD_VOICE_DEFAULT = "en-US-Neural2-J";
+
+  const [selectedVoice, setSelectedVoice] = useState(() =>
+    localStorage.getItem("vocalize_selected_voice") || CLOUD_VOICE_DEFAULT
+  );
   const [rate, setRate] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = parseFloat(localStorage.getItem("vocalize_speech_rate"));
-      return isNaN(saved) ? defaultRate : saved;
-    }
-    return defaultRate;
+    const saved = parseFloat(localStorage.getItem("vocalize_speech_rate"));
+    return isNaN(saved) ? defaultRate : saved;
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
-  const utteranceRef = useRef(null);
-  const keepAliveRef = useRef(null);       // { ctx, source } | null
-  const wakeLockRef = useRef(null);        // WakeLockSentinel | null
-  const isPlayingRef = useRef(false);      // mirrors isPlaying for event handlers
-  const isPausedRef = useRef(false);       // mirrors isPaused for event handlers
-  const currentTextRef = useRef("");       // text to restart if speech dies on unlock
-  const currentVoiceRef = useRef("");      // voice to restart with
-  const currentRateRef = useRef(1.0);      // rate to restart with
-  const currentVoicesRef = useRef([]);     // voice list to restart with
+  // Playback state refs (safe to read inside async callbacks)
+  const isPlayingRef = useRef(false);
+  const isPausedRef = useRef(false);
+  const wakeLockRef = useRef(null);
+  const audioElRef = useRef(null);         // current <audio> element
+  const chunksRef = useRef([]);            // full chunk list
+  const chunkIndexRef = useRef(0);         // which chunk is playing
+  const prefetchedRef = useRef(null);      // { url, index } pre-fetched next chunk
+  const stopRequestedRef = useRef(false);  // signals the queue to abort
+  const currentTextRef = useRef("");
+  const currentVoiceRef = useRef(CLOUD_VOICE_DEFAULT);
+  const currentRateRef = useRef(1.0);
 
-  // Keep refs in sync with state so event listeners always see current values
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
   useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
 
-  // ── Load voices ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const loadVoices = () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        const availableVoices = window.speechSynthesis.getVoices();
+  // ── Cloud Function reference ───────────────────────────────────────────────
+  const getSynthesizeFn = useCallback(() => {
+    const functions = getFunctions(app);
+    return httpsCallable(functions, "synthesizeSpeech", { timeout: 30000 });
+  }, []);
 
-        if (availableVoices.length > 0) {
-          // Sort voices: Local English first, then Local, then Cloud English, then rest
-          availableVoices.sort((a, b) => {
-            if (a.localService && !b.localService) return -1;
-            if (!a.localService && b.localService) return 1;
-            if (a.lang.startsWith("en") && !b.lang.startsWith("en")) return -1;
-            if (!a.lang.startsWith("en") && b.lang.startsWith("en")) return 1;
-            return a.name.localeCompare(b.name);
-          });
-          setVoices(availableVoices);
+  // ── Fetch one chunk from Cloud TTS → object URL ───────────────────────────
+  const fetchChunkAudio = useCallback(async (text, voiceName, speechRate) => {
+    const synthesizeSpeech = getSynthesizeFn();
+    const result = await synthesizeSpeech({
+      text,
+      voiceName: voiceName || CLOUD_VOICE_DEFAULT,
+      speakingRate: speechRate || 1.0,
+    });
+    return base64ToObjectUrl(result.data.audioBase64);
+  }, [getSynthesizeFn]);
 
-          // Keep current selection if valid, otherwise pick default
-          const hasCurrent = availableVoices.find((v) => v.name === selectedVoice);
-          if (!hasCurrent) {
-            const defaultVoice =
-              availableVoices.find((v) => v.lang.startsWith("en") && v.localService) ||
-              availableVoices.find((v) => v.localService) ||
-              availableVoices.find((v) => v.lang.startsWith("en")) ||
-              availableVoices[0];
-            setSelectedVoice(defaultVoice.name);
-            localStorage.setItem("vocalize_selected_voice", defaultVoice.name);
-          }
-        }
-      }
-    };
-
-    loadVoices();
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+  // ── Teardown current audio element ─────────────────────────────────────────
+  const destroyAudioEl = useCallback(() => {
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current.src = "";
+      audioElRef.current.onended = null;
+      audioElRef.current.onerror = null;
+      audioElRef.current = null;
     }
-    return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = null;
-      }
-    };
-  }, [selectedVoice]);
-
-  // ── Periodic resume() heartbeat — keeps Android from killing speech on lock ──
-  //
-  // Android Chrome can silently pause SpeechSynthesis when the screen locks,
-  // even with the AudioContext keepalive. Calling resume() every 5 s is
-  // harmless if speech is already running, but wakes it back up if the OS
-  // paused it behind the scenes.
-  useEffect(() => {
-    if (!isPlaying || isPaused) return;
-
-    const heartbeat = setInterval(() => {
-      if (!window.speechSynthesis) return;
-      // Only nudge if not manually paused
-      if (!isPausedRef.current && isPlayingRef.current) {
-        try { window.speechSynthesis.resume(); } catch (_) {}
-        // Also kick the AudioContext if it got suspended
-        if (keepAliveRef.current?.ctx?.state === "suspended") {
-          keepAliveRef.current.ctx.resume().catch(() => {});
-        }
-      }
-    }, 5000);
-
-    return () => clearInterval(heartbeat);
-  }, [isPlaying, isPaused]);
-
-  // ── visibilitychange — resume or restart speech on screen unlock ───────────
-  //
-  // Screen Wake Lock is released by the OS whenever the page becomes hidden
-  // (manual power button press or app switch). We re-acquire it on return.
-  //
-  // Android can also kill SpeechSynthesis while hidden. On return we check if
-  // speechSynthesis.speaking is false despite us thinking we're playing — if
-  // so, restart from scratch (we can't resume from position with Web Speech API).
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!window.speechSynthesis) return;
-
-      if (document.hidden) {
-        // Going to background — nudge the speech queue; some Android versions
-        // pause on hide and this prevents that.
-        if (isPlayingRef.current && !isPausedRef.current) {
-          try { window.speechSynthesis.resume(); } catch (_) {}
-        }
-      } else {
-        // ── Returning to foreground ──────────────────────────────────────────
-        if (isPlayingRef.current && !isPausedRef.current) {
-          // Re-acquire wake lock (released automatically when page was hidden)
-          requestWakeLock().then((lock) => { wakeLockRef.current = lock; });
-
-          // Resume AudioContext if OS suspended it
-          if (keepAliveRef.current?.ctx?.state === "suspended") {
-            keepAliveRef.current.ctx.resume().catch(() => {});
-          }
-
-          // Check if speech actually survived the screen-off
-          if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
-            // Speech died while screen was off — restart from the beginning
-            console.log("[useSpeech] Speech died on screen lock — restarting");
-            const text = currentTextRef.current;
-            const voice = currentVoiceRef.current;
-            const rate = currentRateRef.current;
-            const voiceList = currentVoicesRef.current;
-            if (text) {
-              // Small delay to let the page fully resume
-              setTimeout(() => {
-                destroyAudioKeepAlive(keepAliveRef.current);
-                keepAliveRef.current = createAudioKeepAlive();
-                window.speechSynthesis.cancel();
-                const optimizedText = optimizeForSpeech(text);
-                const utterance = new SpeechSynthesisUtterance(optimizedText);
-                const voiceObj = voice ? voiceList.find((v) => v.name === voice) : null;
-                if (voiceObj) utterance.voice = voiceObj;
-                utterance.rate = rate;
-                utterance.onend = () => {
-                  setIsPlaying(false); setIsPaused(false);
-                  destroyAudioKeepAlive(keepAliveRef.current);
-                  keepAliveRef.current = null;
-                  releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
-                  clearMediaSession();
-                };
-                utterance.onerror = (e) => {
-                  if (e.error !== "interrupted" && e.error !== "canceled") {
-                    console.error("[useSpeech] Restart error:", e);
-                  }
-                  setIsPlaying(false); setIsPaused(false);
-                  destroyAudioKeepAlive(keepAliveRef.current);
-                  keepAliveRef.current = null;
-                  releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
-                  clearMediaSession();
-                };
-                window.speechSynthesis.speak(utterance);
-              }, 300);
-            }
-          } else {
-            // Speech survived — just call resume() to make sure it's running
-            try { window.speechSynthesis.resume(); } catch (_) {}
-          }
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pagehide", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pagehide", handleVisibilityChange);
-    };
-  }, []); // intentionally empty — uses refs for current state
-
-  // ── Teardown keepalive and wake lock on unmount ────────────────────────────
-  useEffect(() => {
-    return () => {
-      destroyAudioKeepAlive(keepAliveRef.current);
-      keepAliveRef.current = null;
-      releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
-      clearMediaSession();
-    };
+    // Revoke any pre-fetched URL to free memory
+    if (prefetchedRef.current?.url) {
+      URL.revokeObjectURL(prefetchedRef.current.url);
+      prefetchedRef.current = null;
+    }
   }, []);
 
-  // ── Internal: attach events to an utterance ────────────────────────────────
-  const attachUtteranceEvents = useCallback((utterance, voiceObj, speechRate) => {
-    if (voiceObj) utterance.voice = voiceObj;
-    utterance.rate = speechRate;
-    utteranceRef.current = utterance;
-
-    utterance.onend = () => {
-      setIsPlaying(false);
-      setIsPaused(false);
-      destroyAudioKeepAlive(keepAliveRef.current);
-      keepAliveRef.current = null;
-      releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
-      clearMediaSession();
-    };
-
-    utterance.onerror = (e) => {
-      // "interrupted" fires when we manually cancel() — not a real error
-      if (e.error !== "interrupted" && e.error !== "canceled") {
-        console.error("[useSpeech] SpeechSynthesis error:", e);
-      }
-      setIsPlaying(false);
-      setIsPaused(false);
-      destroyAudioKeepAlive(keepAliveRef.current);
-      keepAliveRef.current = null;
-      releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
-      clearMediaSession();
-    };
-  }, []);
-
-  // ── stopSpeech ─────────────────────────────────────────────────────────────
+  // ── Full stop ──────────────────────────────────────────────────────────────
   const stopSpeech = useCallback(() => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    destroyAudioKeepAlive(keepAliveRef.current);
-    keepAliveRef.current = null;
+    stopRequestedRef.current = true;
+    destroyAudioEl();
     releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
     clearMediaSession();
     setIsPlaying(false);
     setIsPaused(false);
-  }, []);
+  }, [destroyAudioEl]);
 
-  // ── Internal: start fresh speech (used by multiple handlers) ──────────────
-  const startSpeech = useCallback((textToSpeak, voiceName, speechRate, voiceList) => {
-    const optimizedText = optimizeForSpeech(textToSpeak);
-    const utterance = new SpeechSynthesisUtterance(optimizedText);
-    const voiceObj = voiceName ? voiceList.find((v) => v.name === voiceName) : null;
+  // ── Play a single chunk by index ───────────────────────────────────────────
+  const playChunk = useCallback(async (index, voice, speechRate) => {
+    if (stopRequestedRef.current) return;
 
-    attachUtteranceEvents(utterance, voiceObj, speechRate);
+    const chunks = chunksRef.current;
+    if (index >= chunks.length) {
+      // All chunks done — clean up
+      console.log("[useSpeech] All chunks played.");
+      destroyAudioEl();
+      releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
+      clearMediaSession();
+      setIsPlaying(false);
+      setIsPaused(false);
+      return;
+    }
 
-    // Store context so visibilitychange can restart if speech dies on lock
+    chunkIndexRef.current = index;
+    let objectUrl;
+
+    // Use pre-fetched URL if available for this index
+    if (prefetchedRef.current?.index === index && prefetchedRef.current?.url) {
+      objectUrl = prefetchedRef.current.url;
+      prefetchedRef.current = null;
+    } else {
+      try {
+        objectUrl = await fetchChunkAudio(chunks[index], voice, speechRate);
+      } catch (err) {
+        console.error("[useSpeech] Cloud TTS fetch failed:", err);
+        // Give up on this playback session
+        destroyAudioEl();
+        releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
+        clearMediaSession();
+        setIsPlaying(false);
+        setIsPaused(false);
+        return;
+      }
+    }
+
+    if (stopRequestedRef.current) {
+      URL.revokeObjectURL(objectUrl);
+      return;
+    }
+
+    // Pre-fetch the next chunk in the background while this one plays
+    if (index + 1 < chunks.length) {
+      fetchChunkAudio(chunks[index + 1], voice, speechRate)
+        .then((url) => {
+          if (!stopRequestedRef.current) {
+            prefetchedRef.current = { url, index: index + 1 };
+          } else {
+            URL.revokeObjectURL(url);
+          }
+        })
+        .catch(() => {}); // pre-fetch failure is non-fatal; next chunk fetches fresh
+    }
+
+    // Create and play the <audio> element
+    destroyAudioEl();
+    const audio = new Audio(objectUrl);
+    audio.volume = 1.0;
+    audioElRef.current = audio;
+
+    audio.onended = () => {
+      URL.revokeObjectURL(objectUrl);
+      if (!stopRequestedRef.current) {
+        playChunk(index + 1, voice, speechRate);
+      }
+    };
+
+    audio.onerror = (e) => {
+      console.error("[useSpeech] Audio element error:", e);
+      URL.revokeObjectURL(objectUrl);
+      destroyAudioEl();
+      releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
+      clearMediaSession();
+      setIsPlaying(false);
+      setIsPaused(false);
+    };
+
+    try {
+      await audio.play();
+    } catch (playErr) {
+      console.error("[useSpeech] audio.play() failed:", playErr);
+    }
+  }, [fetchChunkAudio, destroyAudioEl]);
+
+  // ── Start full speech playback ─────────────────────────────────────────────
+  const startSpeech = useCallback(async (textToSpeak, voiceName, speechRate) => {
+    stopRequestedRef.current = false;
+    destroyAudioEl();
+
+    const chunks = splitIntoChunks(textToSpeak);
+    chunksRef.current = chunks;
     currentTextRef.current = textToSpeak;
     currentVoiceRef.current = voiceName;
     currentRateRef.current = speechRate;
-    currentVoicesRef.current = voiceList;
 
-    // Android lock fix: call resume() before speak() to unblock the queue
-    window.speechSynthesis.resume();
-    window.speechSynthesis.cancel();
-
-    // Start oscillator AudioContext BEFORE speak() to claim audio focus first
-    destroyAudioKeepAlive(keepAliveRef.current);
-    keepAliveRef.current = createAudioKeepAlive();
-
-    // Request screen wake lock — prevents auto-lock during playback
-    requestWakeLock().then((lock) => { wakeLockRef.current = lock; });
-
-    window.speechSynthesis.speak(utterance);
-
-    // Register with Android media system (lock screen controls)
-    setMediaSessionPlaying(optimizedText.slice(0, 60), {
-      play: () => {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-          setIsPaused(false);
-          setMediaSessionPlaying(optimizedText.slice(0, 60), null);
-        }
-      },
-      pause: () => {
-        window.speechSynthesis.pause();
-        setIsPaused(true);
-        setMediaSessionPaused();
-      },
-      stop: () => {
-        stopSpeech();
-      },
-    });
+    console.log(`[useSpeech] Starting Cloud TTS — ${chunks.length} chunks, voice: ${voiceName}`);
 
     setIsPlaying(true);
     setIsPaused(false);
-  }, [attachUtteranceEvents, stopSpeech]);
+
+    // Request wake lock (belt + suspenders — real <audio> already keeps screen alive)
+    requestWakeLock().then((lock) => { wakeLockRef.current = lock; });
+
+    // Register with Android media system
+    setMediaSessionPlaying(textToSpeak.slice(0, 60), {
+      play: () => {
+        if (audioElRef.current && isPausedRef.current) {
+          audioElRef.current.play().catch(() => {});
+          setIsPaused(false);
+          setMediaSessionPlaying(currentTextRef.current.slice(0, 60), null);
+        }
+      },
+      pause: () => {
+        if (audioElRef.current) {
+          audioElRef.current.pause();
+          setIsPaused(true);
+          setMediaSessionPaused();
+        }
+      },
+      stop: () => { stopSpeech(); },
+    });
+
+    // Start playing from chunk 0
+    await playChunk(0, voiceName, speechRate);
+  }, [destroyAudioEl, playChunk, stopSpeech]);
 
   // ── handleSpeakToggle ──────────────────────────────────────────────────────
   const handleSpeakToggle = useCallback((textToSpeak) => {
     if (!textToSpeak) return;
 
     if (isPlaying && !isPaused) {
-      window.speechSynthesis.pause();
-      setIsPaused(true);
-      setMediaSessionPaused();
+      // Pause
+      if (audioElRef.current) {
+        audioElRef.current.pause();
+        setIsPaused(true);
+        setMediaSessionPaused();
+      }
       return;
     }
 
     if (isPlaying && isPaused) {
-      window.speechSynthesis.resume();
-      // Also resume AudioContext if OS suspended it
-      if (keepAliveRef.current?.ctx?.state === "suspended") {
-        keepAliveRef.current.ctx.resume().catch(() => {});
+      // Resume
+      if (audioElRef.current) {
+        audioElRef.current.play().catch(() => {});
+        setIsPaused(false);
+        setMediaSessionPlaying(currentTextRef.current.slice(0, 60), null);
       }
-      setIsPaused(false);
-      setMediaSessionPlaying(currentTextRef.current.slice(0, 60), null);
       return;
     }
 
-    // Start completely new speech
-    startSpeech(textToSpeak, selectedVoice, rate, voices);
-  }, [isPlaying, isPaused, rate, selectedVoice, voices, startSpeech]);
+    // Start fresh
+    startSpeech(textToSpeak, selectedVoice, rate);
+  }, [isPlaying, isPaused, selectedVoice, rate, startSpeech]);
 
   // ── handleVoiceChange ──────────────────────────────────────────────────────
   const handleVoiceChange = useCallback((voiceName, currentText) => {
@@ -490,11 +354,9 @@ export function useSpeech(defaultRate = 1.0) {
     localStorage.setItem("vocalize_selected_voice", voiceName);
     if (isPlaying && currentText) {
       stopSpeech();
-      setTimeout(() => {
-        startSpeech(currentText, voiceName, rate, voices);
-      }, 50);
+      setTimeout(() => startSpeech(currentText, voiceName, rate), 100);
     }
-  }, [isPlaying, stopSpeech, rate, voices, startSpeech]);
+  }, [isPlaying, rate, stopSpeech, startSpeech]);
 
   // ── handleRateChange ───────────────────────────────────────────────────────
   const handleRateChange = useCallback((newRate, currentText) => {
@@ -502,11 +364,32 @@ export function useSpeech(defaultRate = 1.0) {
     localStorage.setItem("vocalize_speech_rate", newRate.toString());
     if (isPlaying && currentText) {
       stopSpeech();
-      setTimeout(() => {
-        startSpeech(currentText, selectedVoice, newRate, voices);
-      }, 50);
+      setTimeout(() => startSpeech(currentText, selectedVoice, newRate), 100);
     }
-  }, [isPlaying, stopSpeech, selectedVoice, voices, startSpeech]);
+  }, [isPlaying, selectedVoice, stopSpeech, startSpeech]);
+
+  // ── Teardown on unmount ────────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      stopRequestedRef.current = true;
+      destroyAudioEl();
+      releaseWakeLock(wakeLockRef.current).then(() => { wakeLockRef.current = null; });
+      clearMediaSession();
+    };
+  }, [destroyAudioEl]);
+
+  // Cloud TTS provides its own voices — expose a small curated list
+  // so the TTSPlayer voice selector works
+  const voices = [
+    { name: "en-US-Neural2-J", lang: "en-US", label: "Neural2 — Male (US)" },
+    { name: "en-US-Neural2-F", lang: "en-US", label: "Neural2 — Female (US)" },
+    { name: "en-US-Neural2-D", lang: "en-US", label: "Neural2 — Male 2 (US)" },
+    { name: "en-US-Neural2-E", lang: "en-US", label: "Neural2 — Female 2 (US)" },
+    { name: "en-GB-Neural2-B", lang: "en-GB", label: "Neural2 — Male (UK)" },
+    { name: "en-GB-Neural2-A", lang: "en-GB", label: "Neural2 — Female (UK)" },
+    { name: "en-AU-Neural2-B", lang: "en-AU", label: "Neural2 — Male (AU)" },
+    { name: "en-AU-Neural2-A", lang: "en-AU", label: "Neural2 — Female (AU)" },
+  ];
 
   return {
     voices,

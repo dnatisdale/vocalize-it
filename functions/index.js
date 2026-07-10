@@ -1,6 +1,7 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
 
 // Initialize the Gemini client using the secure environment variable
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -226,3 +227,92 @@ exports.processClip = onCall(
     throw new HttpsError("internal", detail);
   }
 });
+
+// ─── synthesizeSpeech ─────────────────────────────────────────────────────────
+//
+// Proxies Google Cloud Text-to-Speech API server-side so the API key / service
+// account credentials never reach the browser.
+//
+// Uses Application Default Credentials — no API key needed. The Cloud Function
+// runs under a GCP service account that automatically has access to Cloud TTS
+// once the API is enabled on the project.
+//
+// Returns: { audioBase64: string } — base64-encoded MP3 the client decodes and
+//   plays via an <audio> element, which the OS treats as real media (survives
+//   screen-off on Android and iOS, unlike SpeechSynthesis).
+
+const ttsClient = new TextToSpeechClient();
+
+const MAX_TTS_LENGTH = 5000; // Google Cloud TTS hard limit is 5000 bytes per request
+
+exports.synthesizeSpeech = onCall(
+  {
+    cors: true,
+    timeoutSeconds: 30,
+    memory: "256MiB",
+  },
+  async (request) => {
+    const { text, voiceName, speakingRate } = request.data;
+
+    // ── Input validation ──────────────────────────────────────────────────────
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        "The function must be called with a non-empty 'text' argument."
+      );
+    }
+
+    if (text.length > MAX_TTS_LENGTH) {
+      throw new HttpsError(
+        "invalid-argument",
+        `Text chunk too long (${text.length} chars). Maximum is ${MAX_TTS_LENGTH}.`
+      );
+    }
+
+    const resolvedVoice = voiceName || "en-US-Neural2-J";
+    const resolvedRate = typeof speakingRate === "number"
+      ? Math.min(Math.max(speakingRate, 0.25), 4.0)
+      : 1.0;
+
+    logger.info("synthesizeSpeech: request", {
+      textLength: text.length,
+      voice: resolvedVoice,
+      rate: resolvedRate,
+    });
+
+    try {
+      const [response] = await ttsClient.synthesizeSpeech({
+        input: { text },
+        voice: {
+          languageCode: resolvedVoice.split("-").slice(0, 2).join("-"), // e.g. "en-US"
+          name: resolvedVoice,
+        },
+        audioConfig: {
+          audioEncoding: "MP3",
+          speakingRate: resolvedRate,
+          // Slight boost for phone speakers
+          effectsProfileId: ["headphone-class-device"],
+        },
+      });
+
+      // response.audioContent is a Buffer — encode to base64 for JSON transport
+      const audioBase64 = response.audioContent.toString("base64");
+
+      logger.info("synthesizeSpeech: success", {
+        audioBytes: response.audioContent.length,
+        voice: resolvedVoice,
+      });
+
+      return { audioBase64 };
+    } catch (error) {
+      logger.error("synthesizeSpeech: Cloud TTS error", {
+        errorMessage: error.message,
+        errorCode: error.code,
+      });
+      throw new HttpsError(
+        "internal",
+        `Cloud TTS error: ${error.message ? error.message.slice(0, 200) : "unknown"}`
+      );
+    }
+  }
+);
