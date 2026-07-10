@@ -257,6 +257,7 @@ exports.synthesizeSpeech = onCall(
     cors: true,
     timeoutSeconds: 30,
     memory: "256MiB",
+    invoker: "public",
   },
   async (request) => {
     const { text, voiceName, speakingRate } = request.data;
