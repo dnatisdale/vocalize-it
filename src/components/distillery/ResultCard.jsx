@@ -141,8 +141,8 @@ export function ResultCard({
                 {confirmBlock === idx && (
                   <div style={{
                     position: "absolute", right: "100%", top: "0", marginRight: "8px",
-                    background: "var(--card-bg)", border: "1px solid var(--border-color)",
-                    padding: "8px", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                    background: "var(--color-secondary)", border: "1px solid var(--border-color)", color: "#ffffff",
+                    padding: "8px", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
                     whiteSpace: "nowrap", zIndex: 10, display: "flex", alignItems: "center", gap: "8px"
                   }}>
                     <span style={{ fontSize: "0.85rem" }}>Add to blocklist?</span>
