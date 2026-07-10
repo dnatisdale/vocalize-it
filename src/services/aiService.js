@@ -38,8 +38,6 @@ function extractFirebaseError(error) {
       "Firebase service is temporarily unavailable. Check your connection and try again.",
     "functions/deadline-exceeded":
       "The request timed out on the server. Your input may be too long, or the network is slow.",
-    "functions/resource-exhausted":
-      "Input text is too long. Please shorten it and try again.",
     "functions/unauthenticated":
       "Authentication required. Please refresh the page and try again.",
     "functions/permission-denied":
