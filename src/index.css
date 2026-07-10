@@ -504,6 +504,17 @@ body {
   transform: translateY(-1px);
 }
 
+.btn-mp3 {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1e1e1e;
+  border: none;
+}
+
+.btn-mp3:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  transform: translateY(-1px);
+}
+
 .btn-danger-outline {
   background: transparent;
   border: 1px solid var(--color-danger);
