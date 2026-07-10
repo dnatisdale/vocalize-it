@@ -1,7 +1,7 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { TextToSpeechClient } = require("@google-cloud/text-to-speech");
+const { GoogleAuth } = require("google-auth-library");
 
 // Initialize the Gemini client using the secure environment variable
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -241,9 +241,16 @@ exports.processClip = onCall(
 //   plays via an <audio> element, which the OS treats as real media (survives
 //   screen-off on Android and iOS, unlike SpeechSynthesis).
 
-const ttsClient = new TextToSpeechClient();
+// Use google-auth-library (already a transitive dep of firebase-admin — no new
+// native packages needed) to get an ADC token for the Cloud TTS REST API.
+// This avoids @google-cloud/text-to-speech's gRPC/emnapi native binaries which
+// cause lock file mismatches between Windows (dev) and Linux (Cloud Build).
+const ttsAuth = new GoogleAuth({
+  scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+});
 
-const MAX_TTS_LENGTH = 5000; // Google Cloud TTS hard limit is 5000 bytes per request
+const TTS_REST_URL = "https://texttospeech.googleapis.com/v1/text:synthesize";
+const MAX_TTS_LENGTH = 5000; // Google Cloud TTS hard limit per request
 
 exports.synthesizeSpeech = onCall(
   {
@@ -281,26 +288,43 @@ exports.synthesizeSpeech = onCall(
     });
 
     try {
-      const [response] = await ttsClient.synthesizeSpeech({
-        input: { text },
-        voice: {
-          languageCode: resolvedVoice.split("-").slice(0, 2).join("-"), // e.g. "en-US"
-          name: resolvedVoice,
+      // Get a short-lived OAuth2 token via Application Default Credentials.
+      // In Cloud Functions this resolves to the function's service account automatically.
+      const client = await ttsAuth.getClient();
+      const tokenResponse = await client.getAccessToken();
+      const token = tokenResponse.token;
+
+      const ttsResponse = await fetch(TTS_REST_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        audioConfig: {
-          audioEncoding: "MP3",
-          speakingRate: resolvedRate,
-          // Slight boost for phone speakers
-          effectsProfileId: ["headphone-class-device"],
-        },
+        body: JSON.stringify({
+          input: { text },
+          voice: {
+            languageCode: resolvedVoice.split("-").slice(0, 2).join("-"),
+            name: resolvedVoice,
+          },
+          audioConfig: {
+            audioEncoding: "MP3",
+            speakingRate: resolvedRate,
+            effectsProfileId: ["headphone-class-device"],
+          },
+        }),
       });
 
-      // response.audioContent is a Buffer — encode to base64 for JSON transport
-      const audioBase64 = response.audioContent.toString("base64");
+      if (!ttsResponse.ok) {
+        const errText = await ttsResponse.text();
+        throw new Error(`TTS REST ${ttsResponse.status}: ${errText.slice(0, 300)}`);
+      }
+
+      const ttsData = await ttsResponse.json();
+      const audioBase64 = ttsData.audioContent; // already base64 from REST API
 
       logger.info("synthesizeSpeech: success", {
-        audioBytes: response.audioContent.length,
         voice: resolvedVoice,
+        rate: resolvedRate,
       });
 
       return { audioBase64 };
