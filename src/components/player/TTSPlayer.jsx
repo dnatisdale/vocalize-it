@@ -12,6 +12,8 @@ export function TTSPlayer({
   stopSpeech,
   handleVoiceChange,
   handleRateChange,
+  downloadMP3,
+  isDownloading,
   renderLayoutGrip,
   isDragged,
   onDragStart,
@@ -37,7 +39,7 @@ export function TTSPlayer({
     >
 
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "16px" }}>
-        <button onClick={() => handleSpeakToggle(processedText || clipboardText)} className="btn btn-accent" style={{ flex: 2, minWidth: "120px" }}>
+        <button onClick={() => handleSpeakToggle(processedText || clipboardText)} className="btn btn-accent" style={{ flex: 3, minWidth: "120px" }}>
           {isPlaying && !isPaused ? (
             <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div className="soundwave-icon">
@@ -52,8 +54,11 @@ export function TTSPlayer({
             <span>{isPlaying && isPaused ? "▶ Resume" : "▶ Play"}</span>
           )}
         </button>
-        <button onClick={stopSpeech} className="btn btn-secondary" style={{ flex: 1, minWidth: "100px" }} disabled={!isPlaying && !isPaused}>
-          ■ Stop
+        <button onClick={() => downloadMP3(processedText || clipboardText)} className="btn btn-secondary" style={{ flex: 1, minWidth: "70px" }} title="Save as MP3" disabled={isDownloading}>
+          {isDownloading ? "..." : "MP3"}
+        </button>
+        <button onClick={stopSpeech} className="btn btn-secondary" style={{ flex: 1, minWidth: "50px", maxWidth: "60px", display: "flex", justifyContent: "center", alignItems: "center" }} disabled={!isPlaying && !isPaused} title="Stop">
+          ■
         </button>
       </div>
 

@@ -463,6 +463,8 @@ function App() {
                 stopSpeech={speech.stopSpeech}
                 handleVoiceChange={speech.handleVoiceChange}
                 handleRateChange={speech.handleRateChange}
+                downloadMP3={speech.downloadMP3}
+                isDownloading={speech.isDownloading}
                 renderLayoutGrip={() => null}
                 isDragged={false}
                 onDragStart={() => {}}

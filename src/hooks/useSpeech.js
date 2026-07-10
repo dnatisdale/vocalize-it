@@ -132,6 +132,7 @@ export function useSpeech(defaultRate = 1.0) {
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Playback state refs (safe to read inside async callbacks)
   const isPlayingRef = useRef(false);
@@ -378,6 +379,45 @@ export function useSpeech(defaultRate = 1.0) {
     };
   }, [destroyAudioEl]);
 
+  // ── Download MP3 ───────────────────────────────────────────────────────────
+  const downloadMP3 = useCallback(async (textToSpeak) => {
+    setIsDownloading(true);
+    try {
+      const chunks = splitIntoChunks(textToSpeak);
+      const synthesizeSpeech = getSynthesizeFn();
+      
+      const base64Chunks = [];
+      for (let i = 0; i < chunks.length; i++) {
+        const result = await synthesizeSpeech({
+          text: chunks[i],
+          voiceName: selectedVoice,
+          speakingRate: rate,
+        });
+        base64Chunks.push(result.data.audioBase64);
+      }
+
+      const binaryBlobs = base64Chunks.map(b => {
+        const binary = atob(b);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new Blob([bytes], { type: "audio/mpeg" });
+      });
+      const finalBlob = new Blob(binaryBlobs, { type: "audio/mpeg" });
+      
+      const url = URL.createObjectURL(finalBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ListenBetter_Audio.mp3`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("[useSpeech] Failed to download MP3:", e);
+      alert("Failed to download MP3. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [getSynthesizeFn, selectedVoice, rate]);
+
   // Cloud TTS provides its own voices — expose a small curated list
   // so the TTSPlayer voice selector works
   const voices = [
@@ -401,5 +441,7 @@ export function useSpeech(defaultRate = 1.0) {
     stopSpeech,
     handleVoiceChange,
     handleRateChange,
+    downloadMP3,
+    isDownloading,
   };
 }
