@@ -43,7 +43,7 @@ export function ResultCard({
       }}
     >
       <div className="result-header">
-        <span>{rule === "distill" ? "Distillery" : "AI Output Result"}</span>
+        <span>{rule === "distill" ? "Distillery" : "Results"}</span>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           {rule !== "distill" && processingModeFeedback && (
             <span style={{ fontSize: "0.75rem", fontStyle: "italic", opacity: 0.8, marginRight: "4px", background: "var(--bg-input)", padding: "2px 8px", borderRadius: "12px", border: "1px solid var(--border-color)" }}>
@@ -147,7 +147,7 @@ export function ResultCard({
                   }}>
                     <span style={{ fontSize: "0.85rem" }}>Add to blocklist?</span>
                     <button onClick={() => { handleAddToBlocklist(para); setConfirmBlock(null); }} style={{ background: "var(--color-primary)", color: "#fff", border: "none", borderRadius: "4px", padding: "4px 8px", cursor: "pointer", fontSize: "0.8rem" }}>Yes</button>
-                    <button onClick={() => setConfirmBlock(null)} style={{ background: "transparent", border: "1px solid var(--border-color)", color: "var(--text-primary)", borderRadius: "4px", padding: "4px 8px", cursor: "pointer", fontSize: "0.8rem" }}>No</button>
+                    <button onClick={() => setConfirmBlock(null)} style={{ background: "#ffffff", color: "#000000", border: "1px solid var(--border-color)", borderRadius: "4px", padding: "4px 8px", cursor: "pointer", fontSize: "0.8rem", fontWeight: "bold" }}>No</button>
                   </div>
                 )}
               </div>

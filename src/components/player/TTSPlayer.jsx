@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { PlayIcon, PauseIcon, RestartIcon } from "../shared/Icons";
 
 export function TTSPlayer({
   clipboardText,
@@ -42,14 +43,22 @@ export function TTSPlayer({
         <button onClick={() => handleSpeakToggle(processedText || clipboardText)} className="btn btn-accent" style={{ flex: 3, minWidth: "120px" }}>
           {isPlaying && !isPaused ? (
             <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-              ⏸ Pause
+              <div className="soundwave-icon">
+                <div className="bar"></div>
+                <div className="bar"></div>
+                <div className="bar"></div>
+                <div className="bar"></div>
+              </div>
+              <PauseIcon /> Pause
             </span>
           ) : (
-            <span>{isPlaying && isPaused ? "▶" : "▶ Play"}</span>
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+              <PlayIcon /> {isPlaying && isPaused ? "" : "Play"}
+            </span>
           )}
         </button>
-        <button onClick={stopSpeech} className="btn btn-secondary" style={{ flex: 1, minWidth: "50px", maxWidth: "60px", display: "flex", justifyContent: "center", alignItems: "center", fontSize: "1.2rem" }} disabled={!isPlaying && !isPaused} title="Restart">
-          ↺
+        <button onClick={stopSpeech} className="btn btn-secondary" style={{ flex: 1, minWidth: "50px", maxWidth: "60px", display: "flex", justifyContent: "center", alignItems: "center" }} disabled={!isPlaying && !isPaused} title="Restart">
+          <RestartIcon />
         </button>
         <button onClick={() => downloadMP3(processedText || clipboardText)} className="btn btn-mp3" style={{ flex: 1, minWidth: "70px" }} title="Save as MP3" disabled={isDownloading}>
           {isDownloading ? "..." : "MP3"}
