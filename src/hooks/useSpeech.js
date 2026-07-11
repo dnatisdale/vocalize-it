@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "../firebase/firebase";
+import { useTTSQuota } from "./useTTSQuota";
 
 // ─── Cloud TTS Audio Pipeline ─────────────────────────────────────────────────
 //
@@ -133,6 +134,7 @@ export function useSpeech(defaultRate = 1.0) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const { addUsage } = useTTSQuota();
 
   // Playback state refs (safe to read inside async callbacks)
   const isPlayingRef = useRef(false);
@@ -164,8 +166,9 @@ export function useSpeech(defaultRate = 1.0) {
       voiceName: voiceName || CLOUD_VOICE_DEFAULT,
       speakingRate: speechRate || 1.0,
     });
+    addUsage(text.length); // Track quota usage
     return base64ToObjectUrl(result.data.audioBase64);
-  }, [getSynthesizeFn]);
+  }, [getSynthesizeFn, addUsage]);
 
   // ── Teardown current audio element ─────────────────────────────────────────
   const destroyAudioEl = useCallback(() => {

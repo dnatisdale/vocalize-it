@@ -12,6 +12,7 @@ import { useSpeech } from "./hooks/useSpeech";
 import { useTemplates } from "./hooks/useTemplates";
 import { usePWA } from "./hooks/usePWA";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import { useTTSQuota } from "./hooks/useTTSQuota";
 import { AmbientBackground } from "./components/layout/AmbientBackground";
 
 import { distillContent, getDistillerStats, advancedOfflineDistill } from "./utils/contentDistiller";
@@ -29,6 +30,7 @@ function generateHistoryId() {
 function App() {
   // PWA & Storage Hooks
   const { showInstallBanner, triggerInstallPrompt, dismissInstallBanner, needRefresh, updateServiceWorker } = usePWA();
+  const { remainingChars } = useTTSQuota();
   const [theme, setTheme] = useLocalStorage("vocalize_theme", "dark");
   // eslint-disable-next-line no-unused-vars
   const [history, setHistory] = useLocalStorage("vocalize_history", []);
@@ -517,6 +519,9 @@ function App() {
         <p style={{ marginBottom: "12px", maxWidth: "400px", margin: "0 auto 12px auto", lineHeight: "1.4" }}>
           Turn any digital text into audio you can actually understand. Just copy, paste, and listen.
         </p>
+        <div style={{ marginBottom: "12px", fontSize: "0.8rem", color: "var(--color-primary)", fontWeight: "500", background: "var(--bg-input)", display: "inline-block", padding: "4px 12px", borderRadius: "12px" }}>
+          Cloud TTS Quota: {remainingChars.toLocaleString()} / 1,000,000 chars remaining
+        </div>
           {typeof window !== "undefined" && (
             <div style={{ marginBottom: "16px" }}>
               <a 
