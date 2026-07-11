@@ -1,5 +1,5 @@
 import React from "react";
-import { ShareIcon, SunIcon, MoonIcon } from "../shared/Icons";
+import { ShareIcon, SunIcon, MoonIcon, MenuIcon } from "../shared/Icons";
 
 export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
   return (
@@ -12,7 +12,9 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
           title="Settings"
           aria-label="Settings"
         >
-          <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>≡</span> Settings
+          <span style={{ display: "flex", transform: "scale(1.3)" }}>
+            <MenuIcon />
+          </span>
         </button>
 
         <button
@@ -21,7 +23,9 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
           title="Share App"
           aria-label="Share App"
         >
-          <ShareIcon /> Share
+          <span style={{ display: "flex", transform: "scale(1.3)" }}>
+            <ShareIcon />
+          </span>
         </button>
 
         <button
@@ -30,7 +34,9 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
           title="Toggle theme"
           aria-label="Toggle Theme"
         >
-          {theme === "dark" ? <SunIcon /> : <MoonIcon />} Theme
+          <span style={{ display: "flex", transform: "scale(1.3)" }}>
+            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+          </span>
         </button>
       </div>
 
