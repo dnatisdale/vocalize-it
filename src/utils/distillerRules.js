@@ -8,6 +8,10 @@ export const LINE_DROP_RULES = [
       /^[\w\s]*(january|february|march|april|may|june|july|august|september|october|november|december)[\w\s]*([|/][\w\s]*(january|february|march|april|may|june|july|august|september|october|november|december)[\w\s]*){1,}/i.test(line.trim()),
   },
   {
+    label: "brb-page-reference",
+    test: (line) => /^brb\s*p\.\s*\d+/i.test(line.trim()),
+  },
+  {
     label: "unsubscribe-text",
     test: (line) =>
       /\b(unsubscribe|manage preferences|manage subscription|opt[- ]?out|email preferences|update your preferences|you are receiving this|you received this|to stop receiving|if you no longer wish)\b/i.test(line),
