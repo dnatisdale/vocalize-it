@@ -3,45 +3,9 @@ import { ShareIcon, SunIcon, MoonIcon, MenuIcon } from "../shared/Icons";
 
 export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
   return (
-    <header className="app-header" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      {/* Top Bar: Navigation & Actions */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-        <button
-          onClick={toggleSettings}
-          className="header-action-btn"
-          title="Settings"
-          aria-label="Settings"
-        >
-          <span style={{ display: "flex", transform: "scale(1.3)" }}>
-            <MenuIcon />
-          </span>
-        </button>
-
-        <button
-          onClick={handleShareApp}
-          className="header-action-btn"
-          title="Share App"
-          aria-label="Share App"
-        >
-          <span style={{ display: "flex", transform: "scale(1.3)" }}>
-            <ShareIcon />
-          </span>
-        </button>
-
-        <button
-          onClick={toggleTheme}
-          className="header-action-btn"
-          title="Toggle theme"
-          aria-label="Toggle Theme"
-        >
-          <span style={{ display: "flex", transform: "scale(1.3)" }}>
-            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-          </span>
-        </button>
-      </div>
-
+    <header className="app-header" style={{ display: "flex", flexDirection: "column", gap: "0" }}>
       {/* Main Title Area */}
-      <div className="app-title-group" style={{ position: "relative", textAlign: "center", maxWidth: "600px", margin: "0 auto", padding: "16px 0" }}>
+      <div className="app-title-group" style={{ position: "relative", textAlign: "center", maxWidth: "600px", margin: "0 auto", padding: "0" }}>
         
         {/* Decorative Wavy Line */}
         <svg 
@@ -67,7 +31,7 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
                 style={{ 
                   animationDelay: `${index * 0.06}s`,
                   WebkitAnimationDelay: `${index * 0.06}s`,
-                  minWidth: char === " " ? "0.15em" : "auto",
+                  minWidth: char === " " ? "0.5em" : "auto",
                   fontWeight: index < 6 ? 400 : 800
                 }}
               >

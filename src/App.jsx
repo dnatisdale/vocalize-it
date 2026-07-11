@@ -14,6 +14,7 @@ import { usePWA } from "./hooks/usePWA";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useTTSQuota } from "./hooks/useTTSQuota";
 import { AmbientBackground } from "./components/layout/AmbientBackground";
+import { ShareIcon, SunIcon, MoonIcon, MenuIcon } from "./components/shared/Icons";
 
 import { distillContent, getDistillerStats, advancedOfflineDistill } from "./utils/contentDistiller";
 import { processWithGemini } from "./services/aiService";
@@ -316,6 +317,41 @@ function App() {
         triggerInstallPrompt={triggerInstallPrompt} 
         dismissInstallBanner={dismissInstallBanner} 
       />
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", maxWidth: "800px", margin: "0 auto", padding: "16px 20px" }}>
+        <button
+          onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+          className="header-action-btn"
+          title="Settings"
+          aria-label="Settings"
+        >
+          <span style={{ display: "flex", transform: "scale(1.3)" }}>
+            <MenuIcon />
+          </span>
+        </button>
+
+        <button
+          onClick={handleShareApp}
+          className="header-action-btn"
+          title="Share App"
+          aria-label="Share App"
+        >
+          <span style={{ display: "flex", transform: "scale(1.3)" }}>
+            <ShareIcon />
+          </span>
+        </button>
+
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="header-action-btn"
+          title="Toggle theme"
+          aria-label="Toggle Theme"
+        >
+          <span style={{ display: "flex", transform: "scale(1.3)" }}>
+            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+          </span>
+        </button>
+      </div>
 
       <div className="glass-card">
         <Header 

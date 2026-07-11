@@ -5,7 +5,13 @@ export function InputArea({ clipboardText, setClipboardText, handlePaste, handle
   if (!clipboardText && !manualPasteMode) {
     return (
       <button onClick={handlePaste} className="paste-hero-btn">
-        Paste Text to Listen
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
+          <span>Paste Text to</span>
+          <span style={{ width: "0.4em" }}></span>
+          <span style={{ fontWeight: 400 }}>Listen</span>
+          <span style={{ width: "0.5em" }}></span>
+          <span style={{ fontWeight: 800 }}>Better</span>
+        </span>
         <span style={{ fontSize: "0.9rem", opacity: 0.8, marginTop: "8px" }}>Click here to paste an email, newsletter, article, or document</span>
       </button>
     );
