@@ -9,7 +9,7 @@ export function InputArea({ clipboardText, setClipboardText, handlePaste, handle
           <span style={{ fontWeight: 600 }}>Paste Text to</span>
           <span style={{ width: "0.4em" }}></span>
           <span style={{ fontWeight: 400 }}>Listen</span>
-          <span style={{ width: "0.5em" }}></span>
+          <span style={{ width: "0.25em" }}></span>
           <span style={{ fontWeight: 800 }}>Better</span>
         </span>
         <span style={{ fontSize: "0.9rem", opacity: 0.8, marginTop: "8px" }}>Click here to paste an email, newsletter, article, or document</span>

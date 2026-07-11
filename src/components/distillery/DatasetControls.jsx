@@ -37,7 +37,7 @@ export function DatasetControls({ datasetInfo, onCancel, onSummarize, onReadColu
           {documentType === 'Bible-dataset' ? 'Bible Dataset Detected' : 'Structured Tabular Data Detected'}
         </h3>
         <p style={{ color: 'var(--text-secondary)', margin: '0 0 12px 0', fontSize: '0.9rem' }}>
-          <span className="brand-text-inline"><img src="/pwa-192x192.png" alt="" className="inline-brand-logo" />Listen<span style={{ width: "0.5em", display: "inline-block" }}></span>Better</span> has intercepted {rowCount} rows and {columnCount} columns. Processing large spreadsheets natively will result in a confusing listening experience.
+          <span className="brand-text-inline"><img src="/pwa-192x192.png" alt="" className="inline-brand-logo" />Listen<span style={{ width: "0.25em", display: "inline-block" }}></span>Better</span> has intercepted {rowCount} rows and {columnCount} columns. Processing large spreadsheets natively will result in a confusing listening experience.
         </p>
         
         {rowWarning && (

@@ -555,9 +555,6 @@ function App() {
         <p style={{ marginBottom: "12px", maxWidth: "400px", margin: "0 auto 12px auto", lineHeight: "1.4" }}>
           Turn any digital text into audio you can actually understand. Just copy, paste, and listen.
         </p>
-        <div style={{ marginBottom: "12px", fontSize: "0.8rem", color: "var(--color-primary)", fontWeight: "500", background: "var(--bg-input)", display: "inline-block", padding: "4px 12px", borderRadius: "12px" }}>
-          Cloud TTS Quota: {remainingChars.toLocaleString()} / 1,000,000 chars remaining
-        </div>
           {typeof window !== "undefined" && (
             <div style={{ marginBottom: "16px" }}>
               <a 
@@ -575,6 +572,7 @@ function App() {
           
           {typeof __APP_VERSION__ !== "undefined" && typeof __APP_UPDATED__ !== "undefined" && (
             <div style={{ fontSize: "0.75rem", opacity: 0.6, display: "flex", flexDirection: "column", gap: "2px" }}>
+              <span>Chars Quota Remaining: {remainingChars.toLocaleString()}</span>
               <span>Version {__APP_VERSION__}</span>
               <span>Updated {__APP_UPDATED__}</span>
             </div>

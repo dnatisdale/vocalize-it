@@ -98,7 +98,7 @@ export function ActionControls({
           className="btn btn-primary btn-action-main"
         >
           {isProcessing ? "Processing..." : (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5em", pointerEvents: "none" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.25em", pointerEvents: "none" }}>
               <HeadphoneIcon />
               <span className="listen-word">Listen</span>
               <span className="better-word">Better</span>

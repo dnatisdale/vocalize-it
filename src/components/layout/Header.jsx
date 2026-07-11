@@ -31,7 +31,7 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
                 style={{ 
                   animationDelay: `${index * 0.06}s`,
                   WebkitAnimationDelay: `${index * 0.06}s`,
-                  minWidth: char === " " ? "0.5em" : "auto",
+                  minWidth: char === " " ? "0.25em" : "auto",
                   fontWeight: index < 6 ? 400 : 800
                 }}
               >
