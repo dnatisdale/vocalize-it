@@ -38,6 +38,7 @@ export function Header({ theme, toggleTheme, handleShareApp, toggleSettings }) {
                 {char === " " ? "\u00A0" : char}
               </span>
             ))}
+            <sup style={{ fontSize: "0.4em", fontWeight: 400, marginLeft: "2px", opacity: 0.8, verticalAlign: "super" }}>®</sup>
           </h1>
           <p className="app-subtitle">Paste anything. Hear what matters.</p>
         </div>
